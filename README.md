@@ -1,4 +1,4 @@
-This is a fork of [https://github.com/robodhruv/visualnav-transformer](https://github.com/robodhruv/visualnav-transformer). This repository contains additional config files and runners so that the deployment part can be run on a Jetson Xavier AGX, Pioneer3-AT robot, and an Up camera. Modified by Szilard Molnar from [ROCON](http://rocon.utcluj.ro/) team UTCN.
+This is a fork of [https://github.com/robodhruv/visualnav-transformer](https://github.com/robodhruv/visualnav-transformer). This repository contains additional config files and runners so that the deployment part can be run on a Jetson Xavier AGX, Pioneer3-AT and Husarion Panther robots, and an Up camera. Modified by Szilard Molnar from [ROCON](http://rocon.utcluj.ro/) team UTCN.
 
 # General Navigation Models: GNM, ViNT and NoMaD
 
@@ -43,7 +43,7 @@ This software was tested on a P3-AT running Ubuntu 20.04.
    ```
    Download it to a catkin_ws from [https://github.com/amor-ros-pkg/rosaria](https://github.com/amor-ros-pkg/rosaria), also check [http://wiki.ros.org/ROSARIA/Tutorials/How%20to%20use%20ROSARIA](http://wiki.ros.org/ROSARIA/Tutorials/How%20to%20use%20ROSARIA).
    The current Runner files are especially include the install location of `~/catkin_ws`, change it if you have installed it to another location.
-5. Conda 
+4. Conda 
     - Install anaconda/[miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install#linux)/etc. for managing environments
     - Make conda env with environment.yml (run this inside the `visualnav-transformer/` directory)
         ```bash
@@ -57,19 +57,32 @@ This software was tested on a P3-AT running Ubuntu 20.04.
         ```bash
         echo “conda activate vint_deployment” >> ~/.bashrc 
         ```
-6. Install the `vint_train` packages (run this inside the `visualnav-transformer/` directory):
+5. Install the `vint_train` packages (run this inside the `visualnav-transformer/` directory):
     ```bash
     pip install -e train/
     ```
-7. Install the `diffusion_policy` package from this [repo](https://github.com/real-stanford/diffusion_policy):
+6. Install the `diffusion_policy` package from this [repo](https://github.com/real-stanford/diffusion_policy):
     ```bash
     git clone git@github.com:real-stanford/diffusion_policy.git
     pip install -e diffusion_policy/
     ```
-8. Install [tmux](https://github.com/tmux/tmux/wiki/Installing) if not present.
+7. Install [tmux](https://github.com/tmux/tmux/wiki/Installing) if not present.
     Many of the bash scripts rely on tmux to launch multiple screens with different commands. This will be useful for debugging because you can see the output of each screen.
 
-   Be familiar with a few important commands: Navigate between screens: `Ctrl+b` then `ArrowKeys`, `Ctrl+d` closes the screens.
+   Be familiar with a few important commands: Navigate between screens: `Ctrl+b` then `ArrowKeys`, `Ctrl+d` closes the screens. If you want to list all the tmux sessions use: `tmux list-sessions`. If you want to kill all the tmux session use: `tmux kill-server`
+
+8. >[!Note] Using the Husarion Panther:
+    You have to have ROS2 installed alongside ROS1 (recommended: Ros Noetic + ROS2 Foxy)
+    For ease of use I added to aliasess into the `nano ~/.bashrc` file: 
+    ```
+    alias useros1="source /opt/ros/noetic/setup.bash"
+    alias useros2="source /opt/ros/foxy/setup.bash"
+    ```
+    After you have both ROS versions installed, you need to install an additional package: 
+    ```
+    sudo apt install ros-foxy-ros1-bridge
+    ```
+    This installs the [ros1_bridge](https://github.com/ros2/ros1_bridge), which makes it possible for the ROS1 code to control the ROS2 Panther.
 
 #### Hardware Requirements
 - RosARIA for P3-AT
@@ -88,15 +101,24 @@ _Make sure to run these scripts inside the `visualnav-transformer/deployment/src
 
 This section discusses a simple way to create a topological map of the target environment for deployment. For simplicity, we will use the robot in “path-following” mode, i.e., given a single trajectory in an environment, the task is to follow the same trajectory to the goal. The environment may have new/dynamic obstacles, lighting variations etc.
 
-#### Record the rosbag: 
+#### Record the rosbag:
+
+>[!Warning] Do not forget to modify the `vel_teleop_topic` and `vel_navi_topic` in your `deployment/config/robot.yaml` file, both of them to: `vel_teleop_topic: /RosAria/cmd_vel` for the P3-AT robot and  `vel_teleop_topic: /panther/cmd_vel` for the Husarion Panther robot.
+
+##### P3-AT
 ```bash
-./record_bag.sh <bag_name>
+./record_bag_p3.sh <bag_name>
+```
+##### Husarion Panther
+```bash
+./record_bag_panther.sh <bag_name>
 ```
 
 Run this command to teleoperate the robot with the joystick and camera. This command opens up three windows 
-1. `roslaunch vint_locobot.launch`: This launch file opens the `usb_cam` node for the camera, the joy node for the joystick, and nodes for the robot’s mobile base.
-2. `rosrun teleop_twist_keyboard teleop_twist_keyboard.py /cmd_vel:=/RosAria/cmd_vel`: This node teleoperates the robot’s base using keyboard.
+1. `roslaunch vint_p3.launch` or `roslaunch vint_panther.launch`: This launch file opens the `usb_cam` node for the camera, and nodes for the robot’s mobile base for P3-AT.
+2. `rosrun teleop_twist_keyboard teleop_twist_keyboard.py /cmd_vel:=/RosAria/cmd_vel`: This node teleoperates the robot’s base using keyboard for P3_AT. OR `rosrun teleop_twist_keyboard teleop_twist_keyboard.py /cmd_vel:=/panther/cmd_vel`: This node teleoperates the robot’s base using keyboard.
 3. `rosbag record /usb_cam/image_raw -o <bag_name>`: This command isn’t run immediately (you have to click Enter). It will be run in the visualnav-transformer/deployment/topomaps/bags directory, where we recommend you store your rosbags.
+4. Using the `navigate_panther.sh` additionally creates: `ros2 run ros1_bridge dynamic_bridge`: This node passes the `cmd_vel` commands from ROS1 to ROS2
 
 Once you are ready to record the bag, run the `rosbag record` script and teleoperate the robot on the map you want the robot to follow. When you are finished with recording the path, kill the `rosbag record` command, and then kill the tmux session.
 
@@ -117,8 +139,16 @@ When the bag stops playing, kill the tmux session.
 #### Navigation
 _Make sure to run this script inside the `visualnav-transformer/deployment/src/` directory._
 
+>[!Warning] Do not forget to modify the `vel_teleop_topic` and `vel_navi_topic` in your `deployment/config/robot.yaml` file, both of them to: `vel_teleop_topic: /RosAria/cmd_vel` for the P3-AT robot and  `vel_teleop_topic: /panther/cmd_vel` for the Husarion Panther robot.
+
+##### P3-AT
 ```bash
-./navigate.sh “--model <model_name> --dir <topomap_dir>”
+./navigate_p3.sh “--model <model_name> --dir <topomap_dir>”
+```
+
+##### Husarion Panther
+```bash
+./navigate_panther.sh “--model <model_name> --dir <topomap_dir>”
 ```
 
 To deploy one of the models from the published results, we are releasing model checkpoints that you can download from [this link](https://drive.google.com/drive/folders/1a9yWR2iooXFAqjQHetz263--4_2FFggg?usp=sharing).
@@ -135,18 +165,25 @@ The `<topomap_dir>` is the name of the directory in `visualnav-transformer/deplo
 
 This command opens up 4 windows:
 
-1. `roslaunch vint_locobot.launch`: This launch file opens the usb_cam node for the camera, the joy node for the joystick, and several nodes for the robot’s mobile base).
+1. `roslaunch vint_p3.launch` or `roslaunch vint_panther.launch`: This launch file opens the usb_cam node for the camera, and several nodes for the robot’s mobile base for P3-AT.
 2. `python navigate.py --model <model_name> -—dir <topomap_dir>`: This python script starts a node that reads in image observations from the `/usb_cam/image_raw` topic, inputs the observations and the map into the model, and publishes actions to the `/waypoint` topic.
-3. `rosrun teleop_twist_keyboard teleop_twist_keyboard.py /cmd_vel:=/RosAria/cmd_vel`: This node teleoperates the robot’s base using keyboard.
+3. `rosrun teleop_twist_keyboard teleop_twist_keyboard.py /cmd_vel:=/RosAria/cmd_vel`: This node teleoperates the robot’s base using keyboard for P3_AT. OR `rosrun teleop_twist_keyboard teleop_twist_keyboard.py /cmd_vel:=/panther/cmd_vel`: This node teleoperates the robot’s base using keyboard.
 4. `python pd_controller.py`: This python script starts a node that reads messages from the `/waypoint` topic (waypoints from the model) and outputs velocities to navigate the robot’s base.
+5. Using the `navigate_panther.sh` additionally creates: `ros2 run ros1_bridge dynamic_bridge`: This node passes the `cmd_vel` commands from ROS1 to ROS2
 
-When the robot is finishing navigating, kill the `pd_controller.py` script, and then kill the tmux session. If you want to take control of the robot while it is navigating, the `joy_teleop.py` script allows you to do so with the joystick.
+When the robot is finishing navigating, kill the `pd_controller.py` script, and then kill the tmux session.
 
 #### Exploration
 _Make sure to run this script inside the `visualnav-transformer/deployment/src/` directory._
 
+##### P3_AT
 ```bash
-./exploration.sh “--model <model_name>”
+./exploration_p3.sh “--model <model_name>”
+```
+
+##### Husarion Panther
+```bash
+./exploration_panther.sh “--model <model_name>”
 ```
 
 To deploy one of the models from the published results, we are releasing model checkpoints that you can download from [this link](https://drive.google.com/drive/folders/1a9yWR2iooXFAqjQHetz263--4_2FFggg?usp=sharing).
@@ -163,10 +200,11 @@ The `<topomap_dir>` is the name of the directory in `visualnav-transformer/deplo
 
 This command opens up 4 windows:
 
-1. `roslaunch vint_locobot.launch`: This launch file opens the usb_cam node for the camera, the joy node for the joystick, and several nodes for the robot’s mobile base.
+1. `roslaunch vint_p3.launch` or `roslaunch vint_panther.launch`: This launch file opens the usb_cam node for the camera, the joy node for the joystick, and several nodes for the robot’s mobile base for P3-AT.
 2. `python explore.py --model <model_name>`: This python script starts a node that reads in image observations from the `/usb_cam/image_raw` topic, inputs the observations and the map into the model, and publishes exploration actions to the `/waypoint` topic.
-3. `rosrun teleop_twist_keyboard teleop_twist_keyboard.py /cmd_vel:=/RosAria/cmd_vel`: This node teleoperates the robot’s base using keyboard.
+3. `rosrun teleop_twist_keyboard teleop_twist_keyboard.py /cmd_vel:=/RosAria/cmd_vel`: This node teleoperates the robot’s base using keyboard for P3_AT. OR `rosrun teleop_twist_keyboard teleop_twist_keyboard.py /cmd_vel:=/panther/cmd_vel`: This node teleoperates the robot’s base using keyboard.
 4. `python pd_controller.py`: This python script starts a node that reads messages from the `/waypoint` topic (waypoints from the model) and outputs velocities to navigate the robot’s base.
+5. Using the `navigate_panther.sh` additionally creates: `ros2 run ros1_bridge dynamic_bridge`: This node passes the `cmd_vel` commands from ROS1 to ROS2
 
 When the robot is finishing navigating, kill the `pd_controller.py` script, and then kill the tmux session.
 
