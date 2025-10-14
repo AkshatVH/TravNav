@@ -17,7 +17,7 @@ tmux selectp -t 0    # go back to the first pane
 # Run the roslaunch command in the first pane
 tmux select-pane -t 0
 tmux send-keys "source /home/rocon/catkin_ws/devel/setup.bash" Enter
-tmux send-keys "roslaunch vint_p3.launch" Enter
+tmux send-keys "roslaunch visnav_p3.launch" Enter
 
 # Run the navigate.py script with command line args in the second pane
 tmux select-pane -t 1
