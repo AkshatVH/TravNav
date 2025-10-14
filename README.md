@@ -47,7 +47,7 @@ Run the commands below inside the `vint_release/` (topmost) directory:
     ```
 4. Install the `diffusion_policy` package from this [repo](https://github.com/real-stanford/diffusion_policy):
     ```bash
-    git clone git@github.com:real-stanford/diffusion_policy.git
+    git clone https://github.com/real-stanford/diffusion_policy.git
     pip install -e diffusion_policy/
     ```
 

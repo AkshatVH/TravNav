@@ -47,6 +47,7 @@ def pd_controller(waypoint: np.ndarray) -> Tuple[float]:
 		dx, dy = waypoint
 	else:
 		dx, dy, hx, hy = waypoint
+	# print(dx,dy,hx,hy)
 	# this controller only uses the predicted heading if dx and dy near zero
 	if len(waypoint) == 4 and np.abs(dx) < EPS and np.abs(dy) < EPS:
 		v = 0
@@ -55,8 +56,9 @@ def pd_controller(waypoint: np.ndarray) -> Tuple[float]:
 		v =  0
 		w = np.sign(dy) * np.pi/(2*DT)
 	else:
-		v = dx / DT
+		# v = dx / DT
 		w = np.arctan(dy/dx) / DT
+		v = 1 - abs(np.clip(w, -MAX_W, MAX_W))*0.4
 	v = np.clip(v, 0, MAX_V)
 	w = np.clip(w, -MAX_W, MAX_W)
 	return v, w
@@ -96,7 +98,10 @@ def main():
 			vel_msg.linear.x = v
 			vel_msg.angular.z = w
 			print(f"publishing new vel: {v}, {w}")
-		vel_out.publish(vel_msg)
+		if vel_msg.linear.x==0 and vel_msg.angular.z==0:
+			print("Preventing to send 0 twist")
+		else:
+			vel_out.publish(vel_msg)
 		rate.sleep()
 	
 
