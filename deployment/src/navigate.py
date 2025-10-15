@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import yaml
 
 # ROS
+# exec("useros1")
 import rospy
 from sensor_msgs.msg import Image
 from std_msgs.msg import Bool, Float32MultiArray
@@ -34,6 +35,7 @@ TOPOMAP_IMAGES_DIR = "../topomaps/images"
 MODEL_WEIGHTS_PATH = "../model_weights"
 ROBOT_CONFIG_PATH ="../config/robot.yaml"
 MODEL_CONFIG_PATH = "../config/models.yaml"
+# print(os.getcwd())
 with open(ROBOT_CONFIG_PATH, "r") as f:
     robot_config = yaml.safe_load(f)
 MAX_V = robot_config["max_v"]
@@ -214,6 +216,9 @@ def main(args: argparse.Namespace):
                 waypoints = to_numpy(waypoints)
                 # look for closest node
                 min_dist_idx = np.argmin(distances)
+                # print("%d-%d: %d\n"%(start,end,min_dist_idx))
+                # print(distances)
+                # print(waypoints)
                 # chose subgoal and output waypoints
                 if distances[min_dist_idx] > args.close_threshold:
                     chosen_waypoint = waypoints[min_dist_idx][args.waypoint]
@@ -241,7 +246,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         "-m",
-        default="nomad",
+        default="vint",
         type=str,
         help="model name (only nomad is supported) (hint: check ../config/models.yaml) (default: nomad)",
     )

@@ -38,16 +38,16 @@ tmux send-keys "useros1" Enter
 tmux send-keys "cd ../topomaps/bags" Enter
 tmux send-keys "rosbag record /usb_cam/image_raw -o $1" # change topic if necessary
 
-# tmux select-pane -t 4
-# tmux send-keys "useros2" Enter
-# tmux send-keys "cd ../odometries" Enter
-# today=$(date +"%Y_%m_%d"_%H_%M_%S)
-# tmux send-keys "ros2 bag record -o odom_GT_${today} /panther/battery /panther/cmd_vel /panther/imu_broadcaster/imu /panther/odometry/filtered /panther/odometry/wheels /panther/joint_states"
+tmux select-pane -t 4
+tmux send-keys "useros2" Enter
+tmux send-keys "cd ../odometries" Enter
+today=$(date +"%Y_%m_%d"_%H_%M_%S)
+tmux send-keys "ros2 bag record -o odom_isaac_GT_${today} /odom" Enter
 
 # relay rgb topic to usb_cam
-tmux select-pane -t 4
-tmux send-keys "useros1" Enter
-tmux send-keys "rosrun topic_tools relay /rgb /usb_cam/image_raw" Enter
+# tmux select-pane -t 4
+# tmux send-keys "useros1" Enter
+# tmux send-keys "rosrun topic_tools relay /rgb /usb_cam/image_raw" Enter
 
 tmux select-pane -t 3
 

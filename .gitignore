@@ -4,6 +4,7 @@ train/vint_train/data/data_splits/*
 train/wandb/*
 train/gnm_dataset/*
 *_test.yaml
+deployment/odometries/**
 
 *.png
 *.jpg
@@ -13,6 +14,9 @@ train/gnm_dataset/*
 
 deployment/model_weights/*
 deployment/topomaps/*
+deployment/src/ros2_ws/build/*
+deployment/src/ros2_ws/install/*
+deployment/src/ros2_ws/log/*
 
 .vscode/*
 */.vscode/*

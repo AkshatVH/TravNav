@@ -58,7 +58,7 @@ def pd_controller(waypoint: np.ndarray) -> Tuple[float]:
 	else:
 		# v = dx / DT
 		w = np.arctan(dy/dx) / DT
-		v = 1 - abs(np.clip(w, -MAX_W, MAX_W))*0.4
+		v = 1 - abs(np.clip(w, -MAX_W, MAX_W))*0.6
 	v = np.clip(v, 0, MAX_V)
 	w = np.clip(w, -MAX_W, MAX_W)
 	return v, w
@@ -100,6 +100,7 @@ def main():
 			print(f"publishing new vel: {v}, {w}")
 		if vel_msg.linear.x==0 and vel_msg.angular.z==0:
 			print("Preventing to send 0 twist")
+			# vel_out.publish(vel_msg)
 		else:
 			vel_out.publish(vel_msg)
 		rate.sleep()

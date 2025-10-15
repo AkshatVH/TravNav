@@ -31,16 +31,16 @@ tmux send-keys "useros1" Enter
 tmux send-keys "conda activate vint_deployment" Enter
 tmux send-keys "python navigate.py $1" Enter
 
-# tmux select-pane -t 2
-# tmux send-keys "useros2" Enter
-# tmux send-keys "cd ../odometries" Enter
-# today=$(date +"%Y-%m-%d"-%H-%M-%S)
-# tmux send-keys "ros2 bag record -o odom_$2_${today} /panther/battery /panther/cmd_vel /panther/imu_broadcaster/imu /panther/odometry/filtered /panther/odometry/wheels /panther/joint_states" Enter
+tmux select-pane -t 2
+tmux send-keys "useros2" Enter
+tmux send-keys "cd ../odometries" Enter
+today=$(date +"%Y-%m-%d"-%H-%M-%S)
+tmux send-keys "ros2 bag record -o odom_isaac_$2_${today} /odom" Enter
 
 # relay rgb topic to usb_cam
-tmux select-pane -t 2
-tmux send-keys "useros1" Enter
-tmux send-keys "rosrun topic_tools relay /rgb /usb_cam/image_raw" Enter
+# tmux select-pane -t 2
+# tmux send-keys "useros1" Enter
+# tmux send-keys "rosrun topic_tools relay /rgb /usb_cam/image_raw" Enter
 
 
 # # Run the ros1_bridge on the last panel
