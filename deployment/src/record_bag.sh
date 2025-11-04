@@ -26,3 +26,5 @@ tmux send-keys "rosbag record /usb_cam/image_raw -o $1" # change topic if necess
 
 # Attach to the tmux session
 tmux -2 attach-session -t $session_name
+
+#### To kill it from another terminal run: tmux kill-server

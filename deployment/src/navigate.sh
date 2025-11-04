@@ -35,3 +35,6 @@ tmux send-keys "python pd_controller.py" Enter
 
 # Attach to the tmux session
 tmux -2 attach-session -t $session_name
+
+
+#### To kill it from another terminal run: tmux kill-server

@@ -30,3 +30,7 @@ tmux send-keys "rosbag play -r 1.5 $2" # feel free to change the playback rate t
 
 # Attach to the tmux session
 tmux -2 attach-session -t $session_name
+
+
+
+#### To kill it from another terminal run: tmux kill-server

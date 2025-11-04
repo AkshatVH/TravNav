@@ -45,7 +45,7 @@ tmux send-keys "ros2 bag record -o odom_$2_${today} /panther/battery /panther/cm
 tmux select-pane -t 4
 tmux send-keys "useros1" Enter
 tmux send-keys "useros2" Enter
-tmux send-keys "ros2 run ros1_bridge dynamic_bridge" Enter
+tmux send-keys "ros2 run ros1_bridge dynamic_bridge --bridge-all-topics" Enter
 
 # Run the teleop.py script in the third pane
 tmux select-pane -t 3
@@ -61,3 +61,6 @@ tmux send-keys "python pd_controller.py" Enter
 
 # Attach to the tmux session
 tmux -2 attach-session -t $session_name
+
+
+#### To kill it from another terminal run: tmux kill-server

@@ -25,7 +25,7 @@ tmux send-keys "roslaunch visnav_isaacsim.launch" Enter
 tmux select-pane -t 2
 tmux send-keys "useros1" Enter
 tmux send-keys "useros2" Enter
-tmux send-keys "ros2 run ros1_bridge dynamic_bridge" Enter
+tmux send-keys "ros2 run ros1_bridge dynamic_bridge --bridge-all-topics" Enter
 
 # Run the teleop.py script in the second pane
 tmux select-pane -t 1
@@ -53,3 +53,6 @@ tmux select-pane -t 3
 
 # Attach to the tmux session
 tmux -2 attach-session -t $session_name
+
+
+#### To kill it from another terminal run: tmux kill-server
