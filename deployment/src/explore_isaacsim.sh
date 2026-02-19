@@ -33,8 +33,7 @@ tmux send-keys "python explore.py $1" Enter
 # tmux select-pane -t 2
 # tmux send-keys "useros2" Enter
 # tmux send-keys "cd ../odometries" Enter
-# today=$(date +"%Y-%m-%d"-%H-%M-%S)
-# tmux send-keys "ros2 bag record -o odom_$2_${today} /panther/battery /panther/cmd_vel /panther/imu_broadcaster/imu /panther/odometry/filtered /panther/odometry/wheels /panther/joint_states"
+# tmux send-keys "ros2 bag record -o odom_$2_$(date +"%Y-%m-%d"-%H-%M-%S) /panther/battery /panther/cmd_vel /panther/imu_broadcaster/imu /panther/odometry/filtered /panther/odometry/wheels /panther/joint_states"
 
 # relay rgb topic to usb_cam
 tmux select-pane -t 2

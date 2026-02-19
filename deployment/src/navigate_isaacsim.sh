@@ -34,8 +34,7 @@ tmux send-keys "python navigate.py $1" Enter
 tmux select-pane -t 2
 tmux send-keys "useros2" Enter
 tmux send-keys "cd ../odometries" Enter
-today=$(date +"%Y-%m-%d"-%H-%M-%S)
-tmux send-keys "ros2 bag record -o odom_isaac_$2_${today} /odom" Enter
+tmux send-keys "ros2 bag record -o odom_isaac_$2_$(date +"%Y-%m-%d"-%H-%M-%S) /odom" Enter
 
 # relay rgb topic to usb_cam
 # tmux select-pane -t 2

@@ -47,7 +47,7 @@ Run the commands below inside the `vint_release/` (topmost) directory:
     ```
 4. Install the `diffusion_policy` package from this [repo](https://github.com/real-stanford/diffusion_policy):
     ```bash
-    git clone https://github.com/real-stanford/diffusion_policy.git
+    git clone git@github.com:real-stanford/diffusion_policy.git
     pip install -e diffusion_policy/
     ```
 
@@ -139,7 +139,7 @@ Locate your training config file and add the following text under the `datasets`
 
 #### Training your model from a checkpoint
 Instead of training from scratch, you can also load an existing checkpoint from the published results.
-Add `load_run: <project_name>/<log_run_name>`to your .yaml config file in `vint_release/train/config/`. The `*.pth` of the file you are loading to be saved in this file structure and renamed to “latest”: `vint_release/train/logs/<project_name>/<log_run_name>/latest.pth`. This makes it easy to train from the checkpoint of a previous run since logs are saved this way by default. Note: if you are loading a checkpoint from a previous run, check for the name the run in the `vint_release/train/logs/<project_name>/`, since the code appends a string of the date to each run_name specified in the config yaml file of the run to avoid duplicate run names. 
+Add `load_run: <project_name>/<log_run_name>`to your .yaml config file in `vint_release/train/config/`. The `*.pth` of the file you are loading to be saved in this file structure and renamed to "latest": `vint_release/train/logs/<project_name>/<log_run_name>/latest.pth`. This makes it easy to train from the checkpoint of a previous run since logs are saved this way by default. Note: if you are loading a checkpoint from a previous run, check for the name the run in the `vint_release/train/logs/<project_name>/`, since the code appends a string of the date to each run_name specified in the config yaml file of the run to avoid duplicate run names. 
 
 
 If you want to use our checkpoints, you can download the `*.pth` files from [this link](https://drive.google.com/drive/folders/1a9yWR2iooXFAqjQHetz263--4_2FFggg?usp=sharing).
@@ -172,7 +172,7 @@ This software was tested on a LoCoBot running Ubuntu 20.04.
         ```
     - (Recommended) add to `~/.bashrc`: 
         ```bash
-        echo “conda activate vint_deployment” >> ~/.bashrc 
+        echo "conda activate vint_deployment" >> ~/.bashrc 
         ```
 5. Install the `vint_train` packages (run this inside the `vint_release/` directory):
     ```bash
@@ -201,7 +201,7 @@ Save the model weights *.pth file in `vint_release/deployment/model_weights` fol
 _Make sure to run these scripts inside the `vint_release/deployment/src/` directory._
 
 
-This section discusses a simple way to create a topological map of the target environment for deployment. For simplicity, we will use the robot in “path-following” mode, i.e. given a single trajectory in an environment, the task is to follow the same trajectory to the goal. The environment may have new/dynamic obstacles, lighting variations etc.
+This section discusses a simple way to create a topological map of the target environment for deployment. For simplicity, we will use the robot in "path-following" mode, i.e. given a single trajectory in an environment, the task is to follow the same trajectory to the goal. The environment may have new/dynamic obstacles, lighting variations etc.
 
 #### Record the rosbag: 
 ```bash
@@ -233,7 +233,7 @@ When the bag stops playing, kill the tmux session.
 _Make sure to run this script inside the `vint_release/deployment/src/` directory._
 
 ```bash
-./navigate.sh “--model <model_name> --dir <topomap_dir>”
+./navigate.sh "--model <model_name> --dir <topomap_dir>"
 ```
 
 To deploy one of the models from the published results, we are releasing model checkpoints that you can download from [this link](https://drive.google.com/drive/folders/1a9yWR2iooXFAqjQHetz263--4_2FFggg?usp=sharing).
@@ -261,7 +261,7 @@ When the robot is finishing navigating, kill the `pd_controller.py` script, and 
 _Make sure to run this script inside the `vint_release/deployment/src/` directory._
 
 ```bash
-./exploration.sh “--model <model_name>”
+./exploration.sh "--model <model_name>"
 ```
 
 To deploy one of the models from the published results, we are releasing model checkpoints that you can download from [this link](https://drive.google.com/drive/folders/1a9yWR2iooXFAqjQHetz263--4_2FFggg?usp=sharing).

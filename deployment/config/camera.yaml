@@ -5,4 +5,4 @@ image_height: 1080
 pixel_format: yuyv
 camera_frame_id: "usb_cam"
 io_method: "mmap"
-framerate: 9
+framerate: 10

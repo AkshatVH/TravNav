@@ -41,8 +41,7 @@ tmux send-keys "rosbag record /usb_cam/image_raw -o $1" # change topic if necess
 tmux select-pane -t 4
 tmux send-keys "useros2" Enter
 tmux send-keys "cd ../odometries" Enter
-today=$(date +"%Y_%m_%d"_%H_%M_%S)
-tmux send-keys "ros2 bag record -o odom_isaac_GT_${today} /odom" Enter
+tmux send-keys "ros2 bag record -o odom_isaac_GT_$(date +"%Y-%m-%d"-%H-%M-%S) /odom" Enter
 
 # relay rgb topic to usb_cam
 # tmux select-pane -t 4

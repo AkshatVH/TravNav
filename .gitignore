@@ -17,6 +17,7 @@ deployment/topomaps/*
 deployment/src/ros2_ws/build/*
 deployment/src/ros2_ws/install/*
 deployment/src/ros2_ws/log/*
+deployment/src/ros2_ws/odom_*.txt
 
 .vscode/*
 */.vscode/*
