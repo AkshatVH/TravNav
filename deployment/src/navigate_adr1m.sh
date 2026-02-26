@@ -22,7 +22,6 @@ tmux splitw -v -p 50 # split it into two halves
 # Run the roslaunch command in the first pane
 tmux select-pane -t 0
 tmux send-keys "useros1" Enter
-tmux send-keys "source /home/rocon/catkin_ws/devel/setup.bash" Enter
 tmux send-keys "roslaunch visnav_adr1m.launch" Enter
 
 # Run the navigate.py script with command line args in the second pane
@@ -34,7 +33,7 @@ tmux send-keys "python navigate.py $1" Enter
 tmux select-pane -t 2
 tmux send-keys "useros2" Enter
 tmux send-keys "cd ../odometries" Enter
-tmux send-keys "ros2 bag record -o odom_adr1m_$2_$(date +"%Y-%m-%d"-%H-%M-%S) /ad_r1m_13/cmd_vel /ad_r1m_13/imu /ad_r1m_13/odometry/filtered /usb_cam/camera_info /usb_cam/image_raw/compressed" Enter
+tmux send-keys "ros2 bag record -o odom_adr1m_$2_$(date +"%Y-%m-%d"-%H-%M-%S) /ad_r1m_13/cmd_vel /ad_r1m_13/imu /ad_r1m_13/odometry/filtered /usb_cam/camera_info /usb_cam/image_raw/compressed /usb_cam/image_raw" Enter
 
 # relay rgb topic to usb_cam
 # tmux select-pane -t 2

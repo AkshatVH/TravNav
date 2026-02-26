@@ -39,7 +39,7 @@ Run the commands below inside the `vint_release/` (topmost) directory:
     ```
 2. Source the conda environment:
     ```
-    conda activate vint_train
+    conda activate vint_deployment
     ```
 3. Install the vint_train packages:
     ```bash

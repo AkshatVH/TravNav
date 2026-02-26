@@ -21,7 +21,6 @@ tmux splitw -v -p 50 # split it into two halves
 # Run the roslaunch command in the first pane
 tmux select-pane -t 0
 tmux send-keys "useros1" Enter
-tmux send-keys "source /home/rocon/catkin_ws/devel/setup.bash" Enter
 tmux send-keys "roslaunch visnav_adr1m.launch" Enter
 
 # Run the navigate.py script with command line args in the second pane

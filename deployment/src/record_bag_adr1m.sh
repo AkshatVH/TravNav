@@ -18,14 +18,13 @@ tmux splitw -h -p 50 # split it into two halves
 # Run the roslaunch command in the first pane
 tmux select-pane -t 0
 tmux send-keys "useros1" Enter
-tmux send-keys "source /home/rocon/catkin_ws/devel/setup.bash" Enter
 tmux send-keys "roslaunch visnav_adr1m.launch" Enter
 
 # Run the ros1_bridge on the last panel
 tmux select-pane -t 2
 tmux send-keys "useros1" Enter
 tmux send-keys "useros2" Enter
-tmux send-keys "ros2 run ros1_bridge dynamic_bridge" Enter #--bridge-all-topics
+tmux send-keys "ros2 run ros1_bridge dynamic_bridge --bridge-all-topics" Enter #--bridge-all-topics
 
 # Run the teleop.py script in the second pane
 tmux select-pane -t 1

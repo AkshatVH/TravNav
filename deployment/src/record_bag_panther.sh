@@ -18,7 +18,6 @@ tmux splitw -h -p 50 # split it into two halves
 # Run the roslaunch command in the first pane
 tmux select-pane -t 0
 tmux send-keys "useros1" Enter
-tmux send-keys "source /home/rocon/catkin_ws/devel/setup.bash" Enter
 tmux send-keys "roslaunch visnav_panther.launch" Enter
 
 # Run the ros1_bridge on the last panel

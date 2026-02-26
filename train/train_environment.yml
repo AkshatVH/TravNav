@@ -1,9 +1,9 @@
-name: nomad_train
+name: vint_deployment
 channels:
 - defaults
 - pytorch
 dependencies:
-- python=3.8.5
+- python=3.10.12
 - cudatoolkit=10.
 - numpy
 - matplotlib

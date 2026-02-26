@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Create a new tmux session
+session_name="create_topomap_$(date +%s)"
+base_folder="/home/szilard/projects/visualnav-transformer/deployment/src_ros2"
+tmux new-session -d -s $session_name
+
+# Split the window into three panes
+tmux selectp -t 0    # select the first (0) pane
+tmux splitw -v -p 50 # split it into two halves
+
+
+# Run the create_topomap.py script with command line args in the second pane
+tmux select-pane -t 0
+tmux send-keys "cd $base_folder" Enter
+tmux send-keys "conda activate vint_deployment" Enter
+tmux send-keys "python create_topomap.py --dt 1 --dir $1" Enter
+
+# Change the directory to ../topomaps/bags and run the rosbag play command in the third pane
+tmux select-pane -t 1
+tmux send-keys "cd $base_folder" Enter
+tmux send-keys "cd ../topomaps/bags" Enter
+tmux send-keys "ros2 bag play -r 1.5 $2" # feel free to change the playback rate to change the edge length in the graph
+
+# Attach to the tmux session
+tmux -2 attach-session -t $session_name
+
+
+
+#### To kill it from another terminal run: tmux kill-server
