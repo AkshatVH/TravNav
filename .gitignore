@@ -5,12 +5,14 @@ train/wandb/*
 train/gnm_dataset/*
 *_test.yaml
 deployment/odometries/**
+results/*
 
 *.png
 *.jpg
 *.pth
 *.mp4
 *.gif
+*.pkl
 
 deployment/model_weights/*
 deployment/topomaps/*

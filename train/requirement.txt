@@ -1,0 +1,27 @@
+# Core scientific & utility libraries
+numpy
+matplotlib
+ipykernel
+
+# PyTorch & Vision
+torch
+torchvision
+
+# Training & Modeling utils
+tqdm==4.64.0
+git+https://github.com/ildoonet/pytorch-gradual-warmup-lr.git
+opencv-python==4.6.0.66
+h5py==3.6.0
+wandb==0.12.18
+prettytable
+efficientnet-pytorch
+warmup-scheduler
+diffusers==0.11.1
+lmdb
+vit-pytorch
+positional-encodings
+
+# ROS packages (using the extra index specified in your conda config)
+#--extra-index-url https://rospypi.github.io/simple/
+#rosbag
+#roslz4
