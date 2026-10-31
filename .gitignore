@@ -13,6 +13,7 @@ results/*
 *.mp4
 *.gif
 *.pkl
+*.zip
 
 deployment/model_weights/*
 deployment/topomaps/*
@@ -154,3 +155,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+train/vint_train/data/*.zip
