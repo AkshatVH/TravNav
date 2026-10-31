@@ -6,7 +6,6 @@ from PIL import Image
 from pathlib import Path
 from scipy import ndimage
 from torchvision.transforms import v2
-import time as time
 
 from dinov2.models.vision_transformer import vit_small
 
@@ -23,27 +22,30 @@ state_dict = torch.load(weights_path, map_location="cpu")
 missing, unexpected = model.load_state_dict(state_dict, strict=False)
 print("Missing keys:", len(missing), "| Unexpected keys:", len(unexpected))
 
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+# device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+device = "cpu"
 model.to(device)
 model.eval()
 print("Model Loaded")
 
+H, W = 560, 560
+
 transform = v2.Compose([
-    v2.Resize(560, interpolation=v2.InterpolationMode.BICUBIC),
-    v2.CenterCrop(560),
+    v2.Resize((H, W), interpolation=v2.InterpolationMode.BICUBIC),
+    v2.CenterCrop(H),
     v2.ToImage(),
     v2.ToDtype(torch.float32, scale=True),
-    v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    # v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-frames_dir = Path("train/vint_train/data/go_stanford/no1vc_7_0")
+frames_dir = Path("train/vint_train/data/go_stanford/no1vc_9_1")
 file_list = sorted(frames_dir.glob("*.jpg"), key=lambda p: int(p.stem))
 batch_size = len(file_list)
 print("Found", batch_size, "frames")
 if batch_size == 0:
     raise FileNotFoundError(f"No .jpg files found in {frames_dir}")
 
-imgs_tensor = torch.zeros(batch_size, 3, 560, 560)
+imgs_tensor = torch.zeros(batch_size, 3, H, W)
 for i, path in enumerate(file_list):
     img = Image.open(path).convert("RGB")
     imgs_tensor[i] = transform(img)
@@ -60,11 +62,13 @@ with torch.no_grad():
 features = torch.cat(features)
 
 B, N, C = features.shape
+grid_h, grid_w = H// 14, W//14
+assert N == grid_h * grid_w
 grid = int(N ** 0.5)
 print("Patch features:", features.shape)
 
-seed_mask = torch.zeros(grid, grid, dtype=torch.bool)
-seed_mask[grid - 4:grid, grid // 3:2 * grid // 3] = True
+seed_mask = torch.zeros(grid_h, grid_w,  dtype=torch.bool)
+seed_mask[grid_h - 4:grid_h, grid_w // 3:2 * grid_w // 3] = True
 seed_flat = seed_mask.flatten()
 seed_np = seed_mask.numpy()
 
@@ -76,12 +80,12 @@ for i in range(B):
     sim = feats @ prototype
     seed_sim = sim[seed_flat]
     threshold = seed_sim.mean() - 2.0 * seed_sim.std()
-    binary = (sim > threshold).view(grid, grid).numpy()
+    binary = (sim > threshold).view(grid_h, grid_w).numpy()
     labeled, _ = ndimage.label(binary)
     seed_labels = np.unique(labeled[seed_np])
     seed_labels = seed_labels[seed_labels > 0]
     connected = np.isin(labeled, seed_labels)
-    sim_maps.append(sim.view(grid, grid).numpy())
+    sim_maps.append(sim.view(grid_h, grid_w).numpy())
     free_maps.append(connected.astype(np.float32))
 
 sim_maps = np.stack(sim_maps)
@@ -90,7 +94,7 @@ free_maps = np.stack(free_maps)
 
 def upsample(arr, size=560):
     t = torch.from_numpy(arr).unsqueeze(1).float()
-    return F.interpolate(t, size=(size, size), mode="bilinear", align_corners=False)[:, 0].numpy()
+    return F.interpolate(t, size=size, mode="bilinear", align_corners=False)[:, 0].numpy()
 
 
 sim_up = upsample(sim_maps)
@@ -101,8 +105,8 @@ originals = (imgs_tensor * std + mean).clamp(0, 1).permute(0, 2, 3, 1).numpy()
 out_dir = Path("train/append/dinov2_results")
 out_dir.mkdir(parents=True, exist_ok=True)
 
-np.save(out_dir / "traversability_similarity.npy", sim_maps)
-np.save(out_dir / "traversability_free_mask.npy", free_maps)
+# np.save(out_dir / "traversability_similarity.npy", sim_maps)
+# np.save(out_dir / "traversability_free_mask.npy", free_maps)
 
 num_show = min(4, B)
 fig, axes = plt.subplots(3, num_show, figsize=(4 * num_show, 12))
