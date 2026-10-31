@@ -1,0 +1,328 @@
+<mujoco model="obstacle_course">
+  <compiler angle="degree" texturedir="textures"/>
+  <option timestep="0.002" integrator="implicitfast"/>
+  <visual>
+    <global offwidth="1280" offheight="960"/>
+    <headlight ambient="0.38 0.38 0.38" diffuse="0.35 0.35 0.35" specular="0 0 0"/>
+    <quality shadowsize="4096"/>
+  </visual>
+  <asset>
+    <texture name="skybox" type="skybox" builtin="gradient" rgb1="0.72 0.72 0.70" rgb2="0.86 0.86 0.84" width="256" height="256"/>
+    <texture name="t_floor" type="2d" file="floor.png"/>
+    <texture name="t_wall" type="2d" file="wall.png"/>
+    <texture name="t_cardboard" type="2d" file="cardboard.png"/>
+    <texture name="t_wood" type="2d" file="wood.png"/>
+    <texture name="t_plastic" type="2d" file="plastic.png"/>
+    <texture name="t_fabric" type="2d" file="fabric.png"/>
+    <material name="m_floor" texture="t_floor" texuniform="true" texrepeat="1 1" specular="0.05" shininess="0.1" reflectance="0.01"/>
+    <material name="m_wall" texture="t_wall" texuniform="true" texrepeat="0.5 0.5" specular="0.02" shininess="0.05"/>
+    <material name="m_cardboard" texture="t_cardboard" texuniform="true" texrepeat="1 1" specular="0.02" shininess="0.05"/>
+    <material name="m_wood" texture="t_wood" texuniform="true" texrepeat="1 1" specular="0.1" shininess="0.2"/>
+    <material name="m_plastic" texture="t_plastic" texuniform="true" texrepeat="1 1" specular="0.2" shininess="0.3"/>
+    <material name="m_fabric" texture="t_fabric" texuniform="true" texrepeat="2 2" specular="0.01" shininess="0.02"/>
+  </asset>
+  <worldbody>
+    <light pos="2 0 2.4" dir="0 0 -1" diffuse="0.45 0.45 0.43" castshadow="true"/>
+    <light pos="6 0 2.4" dir="0 0 -1" diffuse="0.45 0.45 0.43" castshadow="true"/>
+    <light pos="10 0 2.4" dir="0 0 -1" diffuse="0.45 0.45 0.43" castshadow="true"/>
+    <light pos="14 0 2.4" dir="0 0 -1" diffuse="0.45 0.45 0.43" castshadow="true"/>
+    <geom name="floor" type="plane" size="8.60 2.60 0.1" pos="7.20 0 0" material="m_floor" friction="0.5 0.005 0.0001"/>
+    <geom name="wall_left" type="box" size="7.60 0.05 0.6" pos="7.20 1.65 0.6" material="m_wall"/>
+    <geom name="wall_right" type="box" size="7.60 0.05 0.6" pos="7.20 -1.65 0.6" material="m_wall"/>
+    <geom name="wall_back" type="box" size="0.05 1.70 0.6" pos="-0.8 0 0.6" material="m_wall"/>
+    <geom name="wall_end" type="box" size="0.05 1.70 0.6" pos="15.20 0 0.6" material="m_wall"/>
+    <geom name="goal_tape" type="box" size="0.03 1.60 0.001" pos="14.00 0 0.002" rgba="0.72 0.66 0.30 1" contype="0" conaffinity="0"/>
+    <body name="b_obs_1" pos="1.884 -1.493 0.251">
+      <freejoint/>
+      <geom name="obs_1" type="box" size="0.085 0.107 0.251" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_2" pos="2.010 -1.207 0.399">
+      <freejoint/>
+      <geom name="obs_2" type="cylinder" size="0.148 0.399" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_3" pos="1.888 -0.954 0.205">
+      <freejoint/>
+      <geom name="obs_3" type="box" size="0.191 0.075 0.205" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_4" pos="1.952 -0.670 0.207">
+      <freejoint/>
+      <geom name="obs_4" type="cylinder" size="0.179 0.207" material="m_plastic" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_5" pos="2.035 -0.372 0.227">
+      <freejoint/>
+      <geom name="obs_5" type="box" size="0.167 0.090 0.227" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_6" pos="2.045 -0.112 0.352">
+      <freejoint/>
+      <geom name="obs_6" type="cylinder" size="0.140 0.352" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_7" pos="2.053 0.750 0.251">
+      <freejoint/>
+      <geom name="obs_7" type="cylinder" size="0.122 0.251" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_8" pos="2.104 1.035 0.314">
+      <freejoint/>
+      <geom name="obs_8" type="cylinder" size="0.133 0.314" material="m_plastic" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_9" pos="1.961 1.312 0.325">
+      <freejoint/>
+      <geom name="obs_9" type="box" size="0.157 0.114 0.325" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_10" pos="1.900 1.528 0.213">
+      <freejoint/>
+      <geom name="obs_10" type="box" size="0.161 0.072 0.213" euler="0 0 0.0" material="m_cardboard" mass="1.579" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_11" pos="3.461 -1.420 0.209">
+      <freejoint/>
+      <geom name="obs_11" type="box" size="0.088 0.180 0.209" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_12" pos="3.435 -1.081 0.276">
+      <freejoint/>
+      <geom name="obs_12" type="box" size="0.184 0.129 0.276" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_13" pos="3.519 -0.759 0.251">
+      <freejoint/>
+      <geom name="obs_13" type="box" size="0.092 0.162 0.251" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_14" pos="3.468 0.102 0.261">
+      <freejoint/>
+      <geom name="obs_14" type="box" size="0.202 0.099 0.261" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_15" pos="3.609 0.417 0.290">
+      <freejoint/>
+      <geom name="obs_15" type="box" size="0.137 0.186 0.290" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_16" pos="3.608 0.783 0.388">
+      <freejoint/>
+      <geom name="obs_16" type="box" size="0.209 0.149 0.388" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_17" pos="3.569 1.097 0.350">
+      <freejoint/>
+      <geom name="obs_17" type="box" size="0.149 0.135 0.350" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_18" pos="3.408 1.431 0.432">
+      <freejoint/>
+      <geom name="obs_18" type="box" size="0.201 0.169 0.432" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_19" pos="5.115 -1.523 0.205">
+      <freejoint/>
+      <geom name="obs_19" type="cylinder" size="0.077 0.205" material="m_wood" mass="1.666" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_20" pos="5.077 -1.225 0.320">
+      <freejoint/>
+      <geom name="obs_20" type="box" size="0.196 0.192 0.320" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_21" pos="5.102 -0.900 0.259">
+      <freejoint/>
+      <geom name="obs_21" type="box" size="0.184 0.103 0.259" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_22" pos="4.890 -0.639 0.313">
+      <freejoint/>
+      <geom name="obs_22" type="box" size="0.201 0.128 0.313" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_23" pos="4.884 -0.403 0.218">
+      <freejoint/>
+      <geom name="obs_23" type="cylinder" size="0.078 0.218" material="m_plastic" mass="1.011" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_24" pos="5.082 -0.108 0.204">
+      <freejoint/>
+      <geom name="obs_24" type="box" size="0.089 0.186 0.204" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_25" pos="5.112 0.225 0.239">
+      <freejoint/>
+      <geom name="obs_25" type="box" size="0.136 0.116 0.239" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_26" pos="4.934 0.449 0.209">
+      <freejoint/>
+      <geom name="obs_26" type="box" size="0.195 0.077 0.209" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_27" pos="5.074 1.272 0.268">
+      <freejoint/>
+      <geom name="obs_27" type="box" size="0.152 0.145 0.268" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_28" pos="5.030 1.523 0.211">
+      <freejoint/>
+      <geom name="obs_28" type="cylinder" size="0.077 0.211" material="m_wood" mass="1.709" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_29" pos="6.415 -1.454 0.417">
+      <freejoint/>
+      <geom name="obs_29" type="box" size="0.190 0.146 0.417" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_30" pos="6.480 -1.197 0.200">
+      <freejoint/>
+      <geom name="obs_30" type="box" size="0.187 0.080 0.200" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_31" pos="6.537 -0.968 0.219">
+      <freejoint/>
+      <geom name="obs_31" type="box" size="0.090 0.119 0.219" euler="0 0 0.0" material="m_fabric" mass="1.693" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_32" pos="6.410 -0.660 0.215">
+      <freejoint/>
+      <geom name="obs_32" type="box" size="0.203 0.159 0.215" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_33" pos="6.497 -0.350 0.326">
+      <freejoint/>
+      <geom name="obs_33" type="box" size="0.136 0.121 0.326" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_34" pos="6.587 -0.087 0.270">
+      <freejoint/>
+      <geom name="obs_34" type="cylinder" size="0.112 0.270" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_35" pos="6.456 0.171 0.331">
+      <freejoint/>
+      <geom name="obs_35" type="box" size="0.209 0.116 0.331" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_36" pos="6.610 0.485 0.387">
+      <freejoint/>
+      <geom name="obs_36" type="cylinder" size="0.168 0.387" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_37" pos="6.414 1.426 0.297">
+      <freejoint/>
+      <geom name="obs_37" type="box" size="0.112 0.174 0.297" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_38" pos="8.015 -1.478 0.232">
+      <freejoint/>
+      <geom name="obs_38" type="cylinder" size="0.122 0.232" material="m_plastic" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_39" pos="7.901 -1.187 0.322">
+      <freejoint/>
+      <geom name="obs_39" type="cylinder" size="0.138 0.322" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_40" pos="8.115 -0.943 0.209">
+      <freejoint/>
+      <geom name="obs_40" type="cylinder" size="0.076 0.209" material="m_plastic" mass="0.904" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_41" pos="7.927 -0.740 0.256">
+      <freejoint/>
+      <geom name="obs_41" type="cylinder" size="0.098 0.256" material="m_plastic" mass="1.833" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_42" pos="8.000 -0.379 0.244">
+      <freejoint/>
+      <geom name="obs_42" type="cylinder" size="0.233 0.244" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_43" pos="8.054 0.575 0.225">
+      <freejoint/>
+      <geom name="obs_43" type="box" size="0.088 0.122 0.225" euler="0 0 0.0" material="m_cardboard" mass="1.547" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_44" pos="8.099 0.906 0.405">
+      <freejoint/>
+      <geom name="obs_44" type="box" size="0.141 0.180 0.405" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_45" pos="7.897 1.206 0.244">
+      <freejoint/>
+      <geom name="obs_45" type="box" size="0.090 0.090 0.244" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_46" pos="8.042 1.463 0.274">
+      <freejoint/>
+      <geom name="obs_46" type="box" size="0.101 0.137 0.274" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_47" pos="9.402 -1.464 0.241">
+      <freejoint/>
+      <geom name="obs_47" type="box" size="0.183 0.136 0.241" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_48" pos="9.617 -1.126 0.441">
+      <freejoint/>
+      <geom name="obs_48" type="cylinder" size="0.172 0.441" material="m_plastic" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_49" pos="9.575 -0.753 0.349">
+      <freejoint/>
+      <geom name="obs_49" type="box" size="0.143 0.171 0.349" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_50" pos="9.580 -0.397 0.221">
+      <freejoint/>
+      <geom name="obs_50" type="box" size="0.088 0.155 0.221" euler="0 0 0.0" material="m_cardboard" mass="1.944" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_51" pos="9.497 0.553 0.419">
+      <freejoint/>
+      <geom name="obs_51" type="box" size="0.182 0.194 0.419" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_52" pos="9.569 0.862 0.218">
+      <freejoint/>
+      <geom name="obs_52" type="box" size="0.172 0.085 0.218" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_53" pos="9.467 1.148 0.253">
+      <freejoint/>
+      <geom name="obs_53" type="box" size="0.109 0.171 0.253" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_54" pos="9.478 1.474 0.262">
+      <freejoint/>
+      <geom name="obs_54" type="box" size="0.095 0.126 0.262" euler="0 0 0.0" material="m_cardboard" mass="1.996" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_55" pos="11.077 -1.508 0.263">
+      <freejoint/>
+      <geom name="obs_55" type="box" size="0.171 0.092 0.263" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_56" pos="11.114 -1.261 0.334">
+      <freejoint/>
+      <geom name="obs_56" type="box" size="0.207 0.126 0.334" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_57" pos="11.087 -0.920 0.266">
+      <freejoint/>
+      <geom name="obs_57" type="box" size="0.142 0.185 0.266" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_58" pos="10.903 -0.538 0.218">
+      <freejoint/>
+      <geom name="obs_58" type="box" size="0.154 0.167 0.218" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_59" pos="10.982 -0.209 0.224">
+      <freejoint/>
+      <geom name="obs_59" type="box" size="0.136 0.132 0.224" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_60" pos="11.078 0.140 0.346">
+      <freejoint/>
+      <geom name="obs_60" type="cylinder" size="0.187 0.346" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_61" pos="11.017 0.480 0.290">
+      <freejoint/>
+      <geom name="obs_61" type="box" size="0.172 0.123 0.290" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_62" pos="10.964 1.401 0.298">
+      <freejoint/>
+      <geom name="obs_62" type="box" size="0.210 0.199 0.298" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_63" pos="12.411 -1.472 0.251">
+      <freejoint/>
+      <geom name="obs_63" type="box" size="0.156 0.128 0.251" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_64" pos="12.515 -1.217 0.284">
+      <freejoint/>
+      <geom name="obs_64" type="cylinder" size="0.098 0.284" material="m_plastic" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_65" pos="12.459 -1.004 0.238">
+      <freejoint/>
+      <geom name="obs_65" type="box" size="0.171 0.085 0.238" euler="0 0 0.0" material="m_wood" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_66" pos="12.606 -0.770 0.280">
+      <freejoint/>
+      <geom name="obs_66" type="box" size="0.123 0.119 0.280" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_67" pos="12.592 -0.543 0.219">
+      <freejoint/>
+      <geom name="obs_67" type="box" size="0.101 0.078 0.219" euler="0 0 0.0" material="m_cardboard" mass="1.104" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_68" pos="12.383 -0.334 0.275">
+      <freejoint/>
+      <geom name="obs_68" type="box" size="0.153 0.102 0.275" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_69" pos="12.527 -0.041 0.262">
+      <freejoint/>
+      <geom name="obs_69" type="box" size="0.164 0.161 0.262" euler="0 0 0.0" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_70" pos="12.618 0.294 0.229">
+      <freejoint/>
+      <geom name="obs_70" type="box" size="0.131 0.144 0.229" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_71" pos="12.413 0.684 0.278">
+      <freejoint/>
+      <geom name="obs_71" type="box" size="0.171 0.216 0.278" euler="0 0 0.0" material="m_fabric" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_obs_72" pos="12.462 1.550 0.200">
+      <freejoint/>
+      <geom name="obs_72" type="box" size="0.197 0.050 0.200" euler="0 0 0.0" material="m_cardboard" mass="1.262" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_73" pos="4.176 -1.265 0.273">
+      <freejoint/>
+      <geom name="clutter_73" type="box" size="0.071 0.059 0.273" euler="0 0 9.7" material="m_cardboard" mass="0.740" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_74" pos="5.852 -0.098 0.263">
+      <freejoint/>
+      <geom name="clutter_74" type="box" size="0.128 0.150 0.263" euler="0 0 68.2" material="m_plastic" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_75" pos="10.278 -1.223 0.270">
+      <freejoint/>
+      <geom name="clutter_75" type="box" size="0.100 0.084 0.270" euler="0 0 8.5" material="m_fabric" mass="1.632" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_76" pos="1.061 -0.524 0.262">
+      <freejoint/>
+      <geom name="clutter_76" type="box" size="0.139 0.123 0.262" euler="0 0 15.6" material="m_plastic" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_77" pos="5.807 -0.992 0.215">
+      <freejoint/>
+      <geom name="clutter_77" type="box" size="0.131 0.096 0.215" euler="0 0 57.3" material="m_fabric" mass="1.960" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_78" pos="7.212 -0.937 0.211">
+      <freejoint/>
+      <geom name="clutter_78" type="box" size="0.091 0.100 0.211" euler="0 0 1.2" material="m_fabric" mass="1.376" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_79" pos="8.616 -0.521 0.258">
+      <freejoint/>
+      <geom name="clutter_79" type="box" size="0.120 0.168 0.258" euler="0 0 74.8" material="m_plastic" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_80" pos="2.858 -1.119 0.212">
+      <freejoint/>
+      <geom name="clutter_80" type="box" size="0.075 0.081 0.212" euler="0 0 72.6" material="m_plastic" mass="1.244" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_81" pos="10.319 -0.670 0.218">
+      <freejoint/>
+      <geom name="clutter_81" type="box" size="0.136 0.113 0.218" euler="0 0 65.9" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_82" pos="11.873 0.301 0.224">
+      <freejoint/>
+      <geom name="clutter_82" type="box" size="0.125 0.104 0.224" euler="0 0 33.9" material="m_cardboard" mass="1.867" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_83" pos="13.186 -0.211 0.230">
+      <freejoint/>
+      <geom name="clutter_83" type="box" size="0.129 0.155 0.230" euler="0 0 44.9" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_84" pos="4.201 -0.748 0.263">
+      <freejoint/>
+      <geom name="clutter_84" type="box" size="0.124 0.153 0.263" euler="0 0 12.3" material="m_cardboard" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_85" pos="1.174 -1.149 0.270">
+      <freejoint/>
+      <geom name="clutter_85" type="box" size="0.081 0.058 0.270" euler="0 0 21.6" material="m_plastic" mass="1.212" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_86" pos="5.706 -0.513 0.214">
+      <freejoint/>
+      <geom name="clutter_86" type="box" size="0.110 0.127 0.214" euler="0 0 42.3" material="m_plastic" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_87" pos="13.303 -1.433 0.265">
+      <freejoint/>
+      <geom name="clutter_87" type="box" size="0.096 0.094 0.265" euler="0 0 39.4" material="m_fabric" mass="1.730" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_88" pos="11.624 -1.249 0.229">
+      <freejoint/>
+      <geom name="clutter_88" type="box" size="0.097 0.079 0.229" euler="0 0 1.2" material="m_plastic" mass="1.677" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_89" pos="8.603 1.118 0.223">
+      <freejoint/>
+      <geom name="clutter_89" type="box" size="0.105 0.093 0.223" euler="0 0 50.5" material="m_plastic" mass="2.000" friction="0.5 0.005 0.0001"/>
+    </body>    <body name="b_clutter_90" pos="4.292 1.308 0.202">
+      <freejoint/>
+      <geom name="clutter_90" type="box" size="0.078 0.096 0.202" euler="0 0 21.3" material="m_plastic" mass="1.451" friction="0.5 0.005 0.0001"/>
+    </body>
+    <body name="base" pos="0.3 0 0.05">
+      <freejoint name="root"/>
+      <geom name="chassis" type="box" size="0.15 0.1 0.03" pos="0 0 0.01" mass="3" rgba="0.18 0.2 0.22 1"/>
+      <geom name="caster_front" type="sphere" size="0.02" pos="0.12 0 -0.03" mass="0.05" friction="0.001 0.001 0.001" priority="1" condim="1"/>
+      <geom name="caster_rear" type="sphere" size="0.02" pos="-0.12 0 -0.03" mass="0.05" friction="0.001 0.001 0.001" priority="1" condim="1"/>
+      <camera name="front" pos="0.15 0 0.2" xyaxes="0 -1 0 0 0 1" fovy="75"/>
+      <body name="left_wheel" pos="0 0.12 0">
+        <joint name="left_wheel_joint" type="hinge" axis="0 1 0" damping="0.001"/>
+        <geom name="left_wheel_geom" type="cylinder" size="0.05 0.02" euler="90 0 0" mass="0.3" friction="1.5 0.005 0.0001" rgba="0.08 0.08 0.08 1"/>
+      </body>
+      <body name="right_wheel" pos="0 -0.12 0">
+        <joint name="right_wheel_joint" type="hinge" axis="0 1 0" damping="0.001"/>
+        <geom name="right_wheel_geom" type="cylinder" size="0.05 0.02" euler="90 0 0" mass="0.3" friction="1.5 0.005 0.0001" rgba="0.08 0.08 0.08 1"/>
+      </body>
+    </body>
+
+    <camera name="topdown" pos="7.20 0 12" xyaxes="1 0 0 0 1 0" fovy="55"/>
+  </worldbody>
+  <actuator>
+    <velocity name="left_motor" joint="left_wheel_joint" kv="0.5" ctrlrange="-30 30" forcerange="-2 2"/>
+    <velocity name="right_motor" joint="right_wheel_joint" kv="0.5" ctrlrange="-30 30" forcerange="-2 2"/>
+  </actuator>
+</mujoco>
