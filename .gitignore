@@ -156,3 +156,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 train/vint_train/data/*.zip
+train/vint_train/data/*.zip
