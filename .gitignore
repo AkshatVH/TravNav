@@ -11,6 +11,8 @@ deployment/odometries/**
 *.pth
 *.mp4
 *.gif
+*.zip
+*.pkl
 
 deployment/model_weights/*
 deployment/topomaps/*
