@@ -59,3 +59,46 @@ class TraversabilityDecoder(nn.Module):
         out = F.interpolate(out, size=(64, 64), mode="bilinear", align_corners=False)
         out = self.refine(out)
         return self.sigmoid(out)
+
+
+class Tokenizer(nn.Module):
+    def __init__(self, grid_size=2, embed_dim=256, in_channels=1):
+        super().__init__()
+
+        self.grid_size = grid_size
+        self.embed_dim = embed_dim
+
+        self.downsample1 = nn.Sequential(
+            nn.Conv2d(in_channels, 32, kernel_size=3, stride=2, padding=1),
+            nn.GroupNorm(8, 32),
+            nn.SiLU(),
+        )
+        self.downsample2 = nn.Sequential(
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+            nn.GroupNorm(8, 64),
+            nn.SiLU(),
+        )
+        self.downsample3 = nn.Sequential(
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+            nn.GroupNorm(8, 128),
+            nn.SiLU(),
+        )
+
+        self.avg_pool = nn.AdaptiveAvgPool2d(grid_size)
+        self.proj = nn.Conv2d(128, embed_dim, kernel_size=1)
+        self.flatten = nn.Flatten(start_dim=2)
+        self.norm = nn.LayerNorm(embed_dim)
+
+    def forward(self, x):
+        x = self.downsample1(x)
+        x = self.downsample2(x)
+        x = self.downsample3(x)
+        x = self.avg_pool(x)
+        x = self.proj(x)
+        x = self.flatten(x)
+        x = x.transpose(1, 2)
+        x = self.norm(x)
+        return x
+
+    
+
