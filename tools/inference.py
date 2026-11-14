@@ -16,7 +16,7 @@ model = vit_small(
     block_chunks=0,
 )
 
-weights_path = Path("deployment/model_weights/dinov2_vits14_pretrain.pth")
+weights_path = Path("/deployment/model_weights/dinov2_vits14_pretrain.pth")
 print("Loading weights from: ", weights_path)
 state_dict = torch.load(weights_path, map_location="cpu")
 missing, unexpected = model.load_state_dict(state_dict, strict=False)
@@ -35,11 +35,11 @@ transform = v2.Compose([
     v2.CenterCrop(H),
     v2.ToImage(),
     v2.ToDtype(torch.float32, scale=True),
-    # v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-frames_dir = Path("train/vint_train/data/go_stanford/no1vc_9_1")
-file_list = sorted(frames_dir.glob("*.jpg"), key=lambda p: int(p.stem))
+frames_dir = Path("../train/vint_train/data/go_stanford/no1vc_9_1")
+file_list = sorted(frames_dir.glob("19.jpg"), key=lambda p: int(p.stem))
 batch_size = len(file_list)
 print("Found", batch_size, "frames")
 if batch_size == 0:
@@ -102,7 +102,7 @@ free_up = (upsample(free_maps) > 0.5).astype(np.float32)
 
 originals = (imgs_tensor * std + mean).clamp(0, 1).permute(0, 2, 3, 1).numpy()
 
-out_dir = Path("train/append/dinov2_results")
+out_dir = Path("dinov2_results")
 out_dir.mkdir(parents=True, exist_ok=True)
 
 # np.save(out_dir / "traversability_similarity.npy", sim_maps)
@@ -112,10 +112,10 @@ num_show = min(4, B)
 fig, axes = plt.subplots(3, num_show, figsize=(4 * num_show, 12))
 axes = np.atleast_2d(axes).reshape(3, num_show)
 for i in range(num_show):
-    axes[0, i].imshow(originals[i])
+    # axes[0, i].imshow(originals[i])
     axes[1, i].imshow(sim_up[i], cmap="viridis")
-    axes[2, i].imshow(originals[i])
-    axes[2, i].imshow(free_up[i], alpha=0.45, cmap="RdYlGn", vmin=0, vmax=1)
+    # axes[2, i].imshow(originals[i])
+    # axes[2, i].imshow(free_up[i], alpha=0.45, cmap="RdYlGn", vmin=0, vmax=1)
     for row in range(3):
         axes[row, i].axis("off")
 plt.tight_layout()
