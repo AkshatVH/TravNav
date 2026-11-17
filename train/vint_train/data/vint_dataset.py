@@ -40,6 +40,8 @@ class ViNT_Dataset(Dataset):
         normalize: bool = True,
         obs_type: str = "image",
         goal_type: str = "image",
+        teacher_dir: Optional[str] = None,
+        teacher_mode: str = "dino",
     ):
         """
         Main ViNT dataset class
@@ -100,6 +102,12 @@ class ViNT_Dataset(Dataset):
         self.normalize = normalize
         self.obs_type = obs_type
         self.goal_type = goal_type
+        self.teacher_dir = teacher_dir
+        self.teacher_mode = teacher_mode
+        if self.teacher_dir is not None and self.teacher_mode == "dino":
+            teacher_root = os.path.join(self.teacher_dir, self.dataset_name)
+            if not os.path.isdir(teacher_root):
+                raise FileNotFoundError(f"Teacher map folder not found: {teacher_root}")
 
         # load data/data_config.yaml
         with open(
@@ -236,6 +244,17 @@ class ViNT_Dataset(Dataset):
         except TypeError:
             print(f"Failed to load image {image_path}")
 
+    def load_teacher(self, traj_name, t):
+        if self.teacher_dir is None:
+            return None
+        if self.teacher_mode != "dino":
+            return torch.zeros(1, 64, 64, dtype=torch.float32)
+        path = os.path.join(self.teacher_dir, self.dataset_name, traj_name, f"{t}.npy")
+        if not os.path.isfile(path):
+            raise FileNotFoundError(path)
+        m = np.load(path).astype(np.float32)
+        return torch.from_numpy(m).unsqueeze(0)
+
     def _compute_actions(self, traj_data, curr_time, goal_time):
         start_index = curr_time
         end_index = curr_time + self.len_traj_pred * self.waypoint_spacing + 1
@@ -276,11 +295,18 @@ class ViNT_Dataset(Dataset):
     def _get_trajectory(self, trajectory_name):
         if trajectory_name in self.trajectory_cache:
             return self.trajectory_cache[trajectory_name]
-        else:
-            with open(os.path.join(self.data_folder, trajectory_name, "traj_data.pkl"), "rb") as f:
-                traj_data = pickle.load(f)
-            self.trajectory_cache[trajectory_name] = traj_data
-            return traj_data
+        with open(os.path.join(self.data_folder, trajectory_name, "traj_data.pkl"), "rb") as f:
+            traj_data = pickle.load(f)
+        traj_data["position"] = np.array(
+            [np.asarray(p, dtype=np.float64).reshape(-1)[:2] for p in traj_data["position"]],
+            dtype=np.float64,
+        )
+        traj_data["yaw"] = np.array(
+            [float(np.asarray(y, dtype=np.float64).reshape(-1)[0]) for y in traj_data["yaw"]],
+            dtype=np.float64,
+        )
+        self.trajectory_cache[trajectory_name] = traj_data
+        return traj_data
 
     def __len__(self) -> int:
         return len(self.index_to_data)
@@ -351,7 +377,7 @@ class ViNT_Dataset(Dataset):
             (not goal_is_negative)
         )
 
-        return (
+        items = (
             torch.as_tensor(obs_image, dtype=torch.float32),
             torch.as_tensor(goal_image, dtype=torch.float32),
             actions_torch,
@@ -360,3 +386,7 @@ class ViNT_Dataset(Dataset):
             torch.as_tensor(self.dataset_index, dtype=torch.int64),
             torch.as_tensor(action_mask, dtype=torch.float32),
         )
+        teacher = self.load_teacher(f_curr, curr_time)
+        if teacher is None:
+            return items
+        return items + (teacher,)
