@@ -141,21 +141,19 @@ class ViNT_Dataset(Dataset):
         self._build_caches()
 
     def _build_caches(self, use_tqdm: bool = True):
-        """
-        Build a cache of images for faster loading using LMDB
-        """
-        cache_filename = os.path.join(
-            self.data_split_folder,
-            f"dataset_{self.dataset_name}.lmdb",
+        cache_dir = os.path.join(
+            "/scratch/local",
+            os.environ["USER"],
+            "lmdb",
+            self.dataset_name,
+            os.path.basename(os.path.normpath(self.data_split_folder)),
         )
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_filename = os.path.join(cache_dir, f"dataset_{self.dataset_name}.lmdb")
 
-        # Load all the trajectories into memory. These should already be loaded, but just in case.
         for traj_name in self.traj_names:
             self._get_trajectory(traj_name)
 
-        """
-        If the cache file doesn't exist, create it by iterating through the dataset and writing each image to the cache
-        """
         if not os.path.exists(cache_filename):
             tqdm_iterator = tqdm.tqdm(
                 self.goals_index,
@@ -170,8 +168,8 @@ class ViNT_Dataset(Dataset):
                         with open(image_path, "rb") as f:
                             txn.put(image_path.encode(), f.read())
 
-        # Reopen the cache file in read-only mode
         self._image_cache: lmdb.Environment = lmdb.open(cache_filename, readonly=True)
+
 
     def _build_index(self, use_tqdm: bool = False):
         """

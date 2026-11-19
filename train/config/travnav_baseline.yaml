@@ -1,0 +1,97 @@
+project_name: travnav
+run_name: travnav_baselineB
+
+use_wandb: True
+train: True
+batch_size: 64
+epochs: 30
+gpu_ids: [0]
+num_workers: 12
+lr: 1e-4
+optimizer: adamw
+clipping: False
+max_norm: 1.
+scheduler: "cosine"
+warmup: True
+warmup_epochs: 4
+cyclic_period: 10
+plateau_patience: 3
+plateau_factor: 0.5
+seed: 0
+
+model_type: nomad
+vision_encoder: travnav_vint
+encoding_size: 256
+obs_encoder: efficientnet-b0
+attn_unet: False
+cond_predict_scale: False
+mha_num_attention_heads: 4
+mha_num_attention_layers: 4
+mha_ff_dim_factor: 4
+down_dims: [64, 128, 256]
+
+num_diffusion_iters: 10
+
+goal_mask_prob: 0.5
+
+normalize: True
+
+context_type: temporal
+context_size: 5
+alpha: 1e-4
+
+distance:
+  min_dist_cat: 0
+  max_dist_cat: 20
+action:
+  min_dist_cat: 3
+  max_dist_cat: 20
+
+len_traj_pred: 8
+learn_angle: False
+
+stage: 2
+use_trav: False
+num_trav_tokens: 4
+trav_dropout: 0.1
+decoder_in_channels: [40, 112, 320]
+teacher_mode: dino
+teacher_dir: ../tools/out/data
+lambda_t: 0.1
+lr_new: 0.0001
+lr_pretrained: 0.00001
+trav_log_every: 500
+overfit_one_batch: False
+pretrained_checkpoint: ../deployment/model_weights/nomad.pth
+
+image_size: [96, 96]
+datasets:
+  go_stanford:
+    data_folder: ./vint_train/data/go_stanford
+    train: vint_train/data/data_splits/go_stanford/train/
+    test: vint_train/data/data_splits/go_stanford/test/
+    end_slack: 0
+    goals_per_obs: 2
+    negative_mining: True
+  cory_hall:
+    data_folder: ./vint_train/data/cory_hall
+    train: vint_train/data/data_splits/cory_hall/train/
+    test: vint_train/data/data_splits/cory_hall/test/
+    end_slack: 3
+    goals_per_obs: 1
+    negative_mining: True
+  sacson:
+    data_folder: ./vint_train/data/sacson
+    train: vint_train/data/data_splits/sacson/train/
+    test: vint_train/data/data_splits/sacson/test/
+    end_slack: 3
+    goals_per_obs: 1
+    negative_mining: True
+
+print_log_freq: 100
+image_log_freq: 1000
+num_images_log: 8
+pairwise_test_freq: 0
+eval_fraction: 0.25
+wandb_log_freq: 10
+eval_freq: 1

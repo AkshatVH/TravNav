@@ -7,6 +7,7 @@ from prettytable import PrettyTable
 import tqdm
 import itertools
 
+from vint_train.models.travnav.trav_modules import distil_loss, get_teacher_map
 from vint_train.visualizing.action_utils import visualize_traj_pred, plot_trajs_and_points
 from vint_train.visualizing.distance_utils import visualize_dist_pred
 from vint_train.visualizing.visualize_utils import to_numpy, from_numpy
@@ -23,6 +24,7 @@ from torch.optim import Adam
 from torchvision import transforms
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 # LOAD DATA CONFIG
 with open(os.path.join(os.path.dirname(__file__), "../data/data_config.yaml"), "r") as f:
@@ -1175,3 +1177,410 @@ def visualize_diffusion_action_distribution(
         wandb.log({f"{eval_type}_action_samples": wandb_list}, commit=False)
 
 
+
+
+
+def _policy_loggers(split, window_size):
+    names = [
+        "uc_action_loss",
+        "uc_action_waypts_cos_sim",
+        "uc_multi_action_waypts_cos_sim",
+        "gc_dist_loss",
+        "gc_action_loss",
+        "gc_action_waypts_cos_sim",
+        "gc_multi_action_waypts_cos_sim",
+    ]
+    return {name: Logger(name, split, window_size=window_size) for name in names}
+
+
+def _action_reduce(unreduced_loss, action_mask):
+    while unreduced_loss.dim() > 1:
+        unreduced_loss = unreduced_loss.mean(dim=-1)
+    assert unreduced_loss.shape == action_mask.shape, f"{unreduced_loss.shape} != {action_mask.shape}"
+    return (unreduced_loss * action_mask).mean() / (action_mask.mean() + 1e-2)
+
+
+def save_trav_png(path, obs, pred, target, max_rows=4):
+    n = min(max_rows, obs.shape[0])
+    fig = Figure(figsize=(9, 3 * n))
+    axes = fig.subplots(n, 3, squeeze=False)
+    for r in range(n):
+        axes[r][0].imshow(obs[r].permute(1, 2, 0).clamp(0, 1).cpu().numpy())
+        axes[r][1].imshow(pred[r, 0].detach().cpu().numpy(), vmin=0, vmax=1)
+        axes[r][2].imshow(target[r, 0].detach().cpu().numpy(), vmin=0, vmax=1)
+        for c, title in enumerate(("frame", "pred", "teacher")):
+            axes[r][c].set_title(title)
+            axes[r][c].axis("off")
+    fig.tight_layout()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fig.savefig(path, dpi=80)
+
+
+def set_travnav_train_mode(model, stage):
+    net = model.module if isinstance(model, nn.DataParallel) else model
+    model.train()
+    if stage == 1:
+        net.eval()
+        net.vision_encoder.decoder.train()
+    return net.vision_encoder
+
+
+def _save_fixed_trav_vis(ema_model, vis_batch, transform, device, teacher_mode, project_folder, eval_type, epoch):
+    obs_image, goal_image, actions, _, _, _, _, teacher_map = vis_batch
+    obs_images = torch.split(obs_image, 3, dim=1)
+    viz_obs = TF.resize(obs_images[-1], VISUALIZATION_IMAGE_SIZE[::-1])
+    batch_obs = torch.cat([transform(o) for o in obs_images], dim=1).to(device)
+    batch_goal = transform(goal_image).to(device)
+    no_mask = torch.zeros(obs_image.shape[0], dtype=torch.long, device=device)
+    with torch.no_grad():
+        ema_model("vision_encoder", obs_img=batch_obs, goal_img=batch_goal, input_goal_mask=no_mask)
+        pred = ema_model.vision_encoder.last_trav_map
+        target = get_teacher_map(teacher_mode, teacher_map.to(device), actions.to(device))
+    path = os.path.join(project_folder, "vis", f"{eval_type}_fixed_e{epoch:03d}.png")
+    save_trav_png(path, viz_obs, pred, target, max_rows=8)
+
+
+def train_travnav(
+    model: nn.Module,
+    ema_model: EMAModel,
+    optimizer: Adam,
+    dataloader: DataLoader,
+    transform: transforms,
+    device: torch.device,
+    noise_scheduler: DDPMScheduler,
+    goal_mask_prob: float,
+    project_folder: str,
+    epoch: int,
+    alpha: float = 1e-4,
+    lambda_t: float = 0.1,
+    stage: int = 2,
+    teacher_mode: str = "dino",
+    trav_log_every: int = 500,
+    print_log_freq: int = 100,
+    wandb_log_freq: int = 10,
+    image_log_freq: int = 1000,
+    num_images_log: int = 8,
+    use_wandb: bool = True,
+):
+    goal_mask_prob = torch.clip(torch.tensor(goal_mask_prob), 0, 1)
+    enc = set_travnav_train_mode(model, stage)
+    num_batches = len(dataloader)
+
+    loggers = _policy_loggers("train", print_log_freq)
+    loggers["l_distil"] = Logger("l_distil", "train", window_size=print_log_freq)
+
+    with tqdm.tqdm(dataloader, desc="Train Batch", leave=False) as tepoch:
+        for i, data in enumerate(tepoch):
+            (
+                obs_image,
+                goal_image,
+                actions,
+                distance,
+                goal_pos,
+                dataset_idx,
+                action_mask,
+                teacher_map,
+            ) = data
+
+            obs_images = torch.split(obs_image, 3, dim=1)
+            batch_viz_obs_images = TF.resize(obs_images[-1], VISUALIZATION_IMAGE_SIZE[::-1])
+            batch_viz_goal_images = TF.resize(goal_image, VISUALIZATION_IMAGE_SIZE[::-1])
+            batch_obs_images = [transform(obs) for obs in obs_images]
+            batch_obs_images = torch.cat(batch_obs_images, dim=1).to(device)
+            batch_goal_images = transform(goal_image).to(device)
+            action_mask = action_mask.to(device)
+            teacher_map = teacher_map.to(device)
+
+            B = actions.shape[0]
+
+            goal_mask = (torch.rand((B,)) < goal_mask_prob).long().to(device)
+            obsgoal_cond = model("vision_encoder", obs_img=batch_obs_images, goal_img=batch_goal_images, input_goal_mask=goal_mask)
+
+            trav_pred = enc.last_trav_map
+            if stage == 1 and trav_pred is None:
+                raise RuntimeError("stage 1 requires use_trav: true")
+            if trav_pred is not None:
+                trav_target = get_teacher_map(teacher_mode, teacher_map, actions.to(device))
+                l_distil = distil_loss(trav_pred, trav_target, teacher_mode)
+            else:
+                trav_target = None
+                l_distil = torch.zeros((), device=device)
+
+            distance = distance.float().to(device)
+
+            if stage == 1:
+                dist_loss = torch.zeros((), device=device)
+                diffusion_loss = torch.zeros((), device=device)
+                loss = l_distil
+            else:
+                deltas = get_delta(actions)
+                ndeltas = normalize_data(deltas, ACTION_STATS)
+                naction = from_numpy(ndeltas).to(device)
+                assert naction.shape[-1] == 2, "action dim must be 2"
+
+                dist_pred = model("dist_pred_net", obsgoal_cond=obsgoal_cond)
+                dist_loss = nn.functional.mse_loss(dist_pred.squeeze(-1), distance)
+                dist_loss = (dist_loss * (1 - goal_mask.float())).mean() / (1e-2 + (1 - goal_mask.float()).mean())
+
+                noise = torch.randn(naction.shape, device=device)
+                timesteps = torch.randint(
+                    0, noise_scheduler.config.num_train_timesteps,
+                    (B,), device=device
+                ).long()
+                noisy_action = noise_scheduler.add_noise(naction, noise, timesteps)
+                noise_pred = model("noise_pred_net", sample=noisy_action, timestep=timesteps, global_cond=obsgoal_cond)
+
+                diffusion_loss = _action_reduce(F.mse_loss(noise_pred, noise, reduction="none"), action_mask)
+                loss = alpha * dist_loss + (1 - alpha) * diffusion_loss + lambda_t * l_distil
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            ema_model.step(model)
+
+            loss_cpu = loss.item()
+            tepoch.set_postfix(loss=loss_cpu)
+            wandb.log({"total_loss": loss_cpu})
+            wandb.log({"dist_loss": dist_loss.item()})
+            wandb.log({"diffusion_loss": diffusion_loss.item()})
+            wandb.log({"l_distil": l_distil.item()})
+
+            if print_log_freq != 0 and i % print_log_freq == 0:
+                if stage == 2:
+                    losses = _compute_losses_nomad(
+                        ema_model.averaged_model,
+                        noise_scheduler,
+                        batch_obs_images,
+                        batch_goal_images,
+                        distance.to(device),
+                        actions.to(device),
+                        device,
+                        action_mask.to(device),
+                    )
+                    for key, value in losses.items():
+                        if key in loggers:
+                            loggers[key].log_data(value.item())
+
+                loggers["l_distil"].log_data(l_distil.item())
+
+                data_log = {}
+                for key, logger in loggers.items():
+                    if stage == 1 and key != "l_distil":
+                        continue
+                    data_log[logger.full_name()] = logger.latest()
+                    print(f"(epoch {epoch}) (batch {i}/{num_batches - 1}) {logger.display()}")
+
+                if use_wandb and wandb_log_freq != 0 and i % wandb_log_freq == 0:
+                    wandb.log(data_log, commit=True)
+
+            if trav_pred is not None and trav_log_every != 0 and i % trav_log_every == 0:
+                save_trav_png(
+                    os.path.join(project_folder, "vis", f"train_e{epoch:03d}_s{i:06d}.png"),
+                    batch_viz_obs_images,
+                    trav_pred,
+                    trav_target,
+                )
+
+            if stage == 2 and image_log_freq != 0 and i % image_log_freq == 0:
+                visualize_diffusion_action_distribution(
+                    ema_model.averaged_model,
+                    noise_scheduler,
+                    batch_obs_images,
+                    batch_goal_images,
+                    batch_viz_obs_images,
+                    batch_viz_goal_images,
+                    actions,
+                    distance,
+                    goal_pos,
+                    device,
+                    "train",
+                    project_folder,
+                    epoch,
+                    num_images_log,
+                    30,
+                    use_wandb,
+                )
+
+
+def evaluate_travnav(
+    eval_type: str,
+    ema_model: EMAModel,
+    dataloader: DataLoader,
+    transform: transforms,
+    device: torch.device,
+    noise_scheduler: DDPMScheduler,
+    goal_mask_prob: float,
+    project_folder: str,
+    epoch: int,
+    print_log_freq: int = 100,
+    wandb_log_freq: int = 10,
+    image_log_freq: int = 1000,
+    num_images_log: int = 8,
+    eval_fraction: float = 0.25,
+    use_wandb: bool = True,
+    stage: int = 2,
+    teacher_mode: str = "dino",
+    vis_batch=None,
+):
+    goal_mask_prob = torch.clip(torch.tensor(goal_mask_prob), 0, 1)
+    ema_model = ema_model.averaged_model
+    ema_model.eval()
+    enc = ema_model.vision_encoder
+    use_trav = enc.use_trav
+
+    num_batches = len(dataloader)
+
+    loggers = _policy_loggers(eval_type, print_log_freq) if stage == 2 else {}
+    if use_trav:
+        loggers["map_l1"] = Logger("map_l1", eval_type, window_size=print_log_freq)
+        loggers["zero_l1"] = Logger("zero_l1", eval_type, window_size=print_log_freq)
+    num_batches = max(int(num_batches * eval_fraction), 1)
+
+    map_l1_sum = 0.0
+    zero_l1_sum = 0.0
+    map_batches = 0
+
+    with tqdm.tqdm(
+        itertools.islice(dataloader, num_batches),
+        total=num_batches,
+        dynamic_ncols=True,
+        desc=f"Evaluating {eval_type} for epoch {epoch}",
+        leave=False) as tepoch:
+        for i, data in enumerate(tepoch):
+            (
+                obs_image,
+                goal_image,
+                actions,
+                distance,
+                goal_pos,
+                dataset_idx,
+                action_mask,
+                teacher_map,
+            ) = data
+
+            obs_images = torch.split(obs_image, 3, dim=1)
+            batch_viz_obs_images = TF.resize(obs_images[-1], VISUALIZATION_IMAGE_SIZE[::-1])
+            batch_viz_goal_images = TF.resize(goal_image, VISUALIZATION_IMAGE_SIZE[::-1])
+            batch_obs_images = [transform(obs) for obs in obs_images]
+            batch_obs_images = torch.cat(batch_obs_images, dim=1).to(device)
+            batch_goal_images = transform(goal_image).to(device)
+            action_mask = action_mask.to(device)
+            teacher_map = teacher_map.to(device)
+
+            B = actions.shape[0]
+
+            rand_goal_mask = (torch.rand((B,)) < goal_mask_prob).long().to(device)
+            goal_mask = torch.ones_like(rand_goal_mask).long().to(device)
+            no_mask = torch.zeros_like(rand_goal_mask).long().to(device)
+
+            if stage == 2:
+                rand_mask_cond = ema_model("vision_encoder", obs_img=batch_obs_images, goal_img=batch_goal_images, input_goal_mask=rand_goal_mask)
+                obsgoal_cond = ema_model("vision_encoder", obs_img=batch_obs_images, goal_img=batch_goal_images, input_goal_mask=no_mask)
+                trav_pred = enc.last_trav_map
+                obsgoal_cond = obsgoal_cond.flatten(start_dim=1)
+                goal_mask_cond = ema_model("vision_encoder", obs_img=batch_obs_images, goal_img=batch_goal_images, input_goal_mask=goal_mask)
+            else:
+                ema_model("vision_encoder", obs_img=batch_obs_images, goal_img=batch_goal_images, input_goal_mask=no_mask)
+                trav_pred = enc.last_trav_map
+
+            distance = distance.to(device)
+
+            if trav_pred is not None:
+                trav_target = get_teacher_map(teacher_mode, teacher_map, actions.to(device))
+                map_l1 = (trav_pred - trav_target).abs().mean()
+                zero_l1 = trav_target.abs().mean()
+                map_l1_sum += map_l1.item()
+                zero_l1_sum += zero_l1.item()
+                map_batches += 1
+                tepoch.set_postfix(map_l1=map_l1.item())
+
+            if stage == 2:
+                deltas = get_delta(actions)
+                ndeltas = normalize_data(deltas, ACTION_STATS)
+                naction = from_numpy(ndeltas).to(device)
+                assert naction.shape[-1] == 2, "action dim must be 2"
+
+                noise = torch.randn(naction.shape, device=device)
+                timesteps = torch.randint(
+                    0, noise_scheduler.config.num_train_timesteps,
+                    (B,), device=device
+                ).long()
+                noisy_actions = noise_scheduler.add_noise(naction, noise, timesteps)
+
+                rand_mask_noise_pred = ema_model("noise_pred_net", sample=noisy_actions, timestep=timesteps, global_cond=rand_mask_cond)
+                rand_mask_loss = nn.functional.mse_loss(rand_mask_noise_pred, noise)
+
+                no_mask_noise_pred = ema_model("noise_pred_net", sample=noisy_actions, timestep=timesteps, global_cond=obsgoal_cond)
+                no_mask_loss = nn.functional.mse_loss(no_mask_noise_pred, noise)
+
+                goal_mask_noise_pred = ema_model("noise_pred_net", sample=noisy_actions, timestep=timesteps, global_cond=goal_mask_cond)
+                goal_mask_loss = nn.functional.mse_loss(goal_mask_noise_pred, noise)
+
+                tepoch.set_postfix(loss=rand_mask_loss.item())
+
+                wandb.log({"diffusion_eval_loss (random masking)": rand_mask_loss})
+                wandb.log({"diffusion_eval_loss (no masking)": no_mask_loss})
+                wandb.log({"diffusion_eval_loss (goal masking)": goal_mask_loss})
+
+            if print_log_freq != 0 and i % print_log_freq == 0:
+                if stage == 2:
+                    losses = _compute_losses_nomad(
+                        ema_model,
+                        noise_scheduler,
+                        batch_obs_images,
+                        batch_goal_images,
+                        distance.to(device),
+                        actions.to(device),
+                        device,
+                        action_mask.to(device),
+                    )
+                    for key, value in losses.items():
+                        if key in loggers:
+                            loggers[key].log_data(value.item())
+
+                if trav_pred is not None:
+                    loggers["map_l1"].log_data(map_l1.item())
+                    loggers["zero_l1"].log_data(zero_l1.item())
+
+                data_log = {}
+                for key, logger in loggers.items():
+                    data_log[logger.full_name()] = logger.latest()
+                    print(f"(epoch {epoch}) (batch {i}/{num_batches - 1}) {logger.display()}")
+
+                if use_wandb and wandb_log_freq != 0 and i % wandb_log_freq == 0:
+                    wandb.log(data_log, commit=True)
+
+            if stage == 2 and image_log_freq != 0 and i % image_log_freq == 0:
+                visualize_diffusion_action_distribution(
+                    ema_model,
+                    noise_scheduler,
+                    batch_obs_images,
+                    batch_goal_images,
+                    batch_viz_obs_images,
+                    batch_viz_goal_images,
+                    actions,
+                    distance,
+                    goal_pos,
+                    device,
+                    eval_type,
+                    project_folder,
+                    epoch,
+                    num_images_log,
+                    30,
+                    use_wandb,
+                )
+
+    result = {}
+    if map_batches > 0:
+        result["map_l1"] = map_l1_sum / map_batches
+        result["zero_l1"] = zero_l1_sum / map_batches
+        wandb.log({
+            f"map_l1_epoch ({eval_type})": result["map_l1"],
+            f"zero_l1_epoch ({eval_type})": result["zero_l1"],
+        })
+
+    if vis_batch is not None and use_trav:
+        _save_fixed_trav_vis(ema_model, vis_batch, transform, device, teacher_mode, project_folder, eval_type, epoch)
+
+    return result

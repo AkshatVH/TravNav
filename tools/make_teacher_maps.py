@@ -100,8 +100,8 @@ def main():
     ap.add_argument("--batch", type=int, default=32)
     args = ap.parse_args()
 
-    # device = "cuda" if torch.cuda.is_available() else "cpu"
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # device = "cpu"
     print("Device:", device)
     backbone = load_dino(device, args.weights)
     head = load_head(args.seed_rows, args.sigma)
@@ -139,7 +139,7 @@ def main():
                 break
             if flag: 
                 # single = Image.open(chunk[0])
-                print(chunk)
+                # print(chunk)
                 flag = False
             x = torch.stack([tf(Image.open(f).convert("RGB")) for f in chunk]).to(device)
             

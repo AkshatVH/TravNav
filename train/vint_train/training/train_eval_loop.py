@@ -7,6 +7,8 @@ from prettytable import PrettyTable
 from vint_train.training.train_utils import train, evaluate
 from vint_train.training.train_utils import train_nomad, evaluate_nomad
 
+from vint_train.training.train_utils import train_travnav, evaluate_travnav
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -313,3 +315,127 @@ def count_parameters(model):
     # print(table)
     print(f"Total Trainable Params: {total_params/1e6:.2f}M")
     return total_params
+
+def train_eval_loop_travnav(
+    train_model: bool,
+    model: nn.Module,
+    optimizer: Adam,
+    lr_scheduler: torch.optim.lr_scheduler._LRScheduler,
+    noise_scheduler: DDPMScheduler,
+    train_loader: DataLoader,
+    test_dataloaders: Dict[str, DataLoader],
+    transform: transforms,
+    goal_mask_prob: float,
+    epochs: int,
+    device: torch.device,
+    project_folder: str,
+    print_log_freq: int = 100,
+    wandb_log_freq: int = 10,
+    image_log_freq: int = 1000,
+    num_images_log: int = 8,
+    current_epoch: int = 0,
+    alpha: float = 1e-4,
+    use_wandb: bool = True,
+    eval_fraction: float = 0.25,
+    eval_freq: int = 1,
+    stage: int = 2,
+    lambda_t: float = 0.1,
+    teacher_mode: str = "dino",
+    trav_log_every: int = 500,
+):
+    latest_path = os.path.join(project_folder, "latest.pth")
+    ema_model = EMAModel(model=model, power=0.75)
+    best_map_l1 = float("inf")
+
+    vis_batches = {}
+    for name, loader in test_dataloaders.items():
+        batch = next(iter(loader))
+        vis_batches[name] = tuple(x[:8] if torch.is_tensor(x) else x for x in batch)
+
+    for epoch in range(current_epoch, current_epoch + epochs):
+        if train_model:
+            print(
+                f"Start TravNav stage {stage} Training Epoch {epoch}/{current_epoch + epochs - 1}"
+            )
+            train_travnav(
+                model=model,
+                ema_model=ema_model,
+                optimizer=optimizer,
+                dataloader=train_loader,
+                transform=transform,
+                device=device,
+                noise_scheduler=noise_scheduler,
+                goal_mask_prob=goal_mask_prob,
+                project_folder=project_folder,
+                epoch=epoch,
+                print_log_freq=print_log_freq,
+                wandb_log_freq=wandb_log_freq,
+                image_log_freq=image_log_freq,
+                num_images_log=num_images_log,
+                use_wandb=use_wandb,
+                alpha=alpha,
+                lambda_t=lambda_t,
+                stage=stage,
+                teacher_mode=teacher_mode,
+                trav_log_every=trav_log_every,
+            )
+            if lr_scheduler is not None:
+                lr_scheduler.step()
+
+        numbered_path = os.path.join(project_folder, f"ema_{epoch}.pth")
+        torch.save(ema_model.averaged_model.state_dict(), numbered_path)
+        torch.save(ema_model.averaged_model.state_dict(), os.path.join(project_folder, "ema_latest.pth"))
+        print(f"Saved EMA model to {numbered_path}")
+
+        numbered_path = os.path.join(project_folder, f"{epoch}.pth")
+        torch.save(model.state_dict(), numbered_path)
+        torch.save(model.state_dict(), latest_path)
+        print(f"Saved model to {numbered_path}")
+
+        torch.save(optimizer.state_dict(), os.path.join(project_folder, "optimizer_latest.pth"))
+        if lr_scheduler is not None:
+            torch.save(lr_scheduler.state_dict(), os.path.join(project_folder, "scheduler_latest.pth"))
+
+        epoch_map_l1 = []
+        if (epoch + 1) % eval_freq == 0:
+            for dataset_type in test_dataloaders:
+                print(
+                    f"Start {dataset_type} TravNav Testing Epoch {epoch}/{current_epoch + epochs - 1}"
+                )
+                result = evaluate_travnav(
+                    eval_type=dataset_type,
+                    ema_model=ema_model,
+                    dataloader=test_dataloaders[dataset_type],
+                    transform=transform,
+                    device=device,
+                    noise_scheduler=noise_scheduler,
+                    goal_mask_prob=goal_mask_prob,
+                    project_folder=project_folder,
+                    epoch=epoch,
+                    print_log_freq=print_log_freq,
+                    num_images_log=num_images_log,
+                    wandb_log_freq=wandb_log_freq,
+                    use_wandb=use_wandb,
+                    eval_fraction=eval_fraction,
+                    stage=stage,
+                    teacher_mode=teacher_mode,
+                    vis_batch=vis_batches[dataset_type],
+                )
+                if "map_l1" in result:
+                    epoch_map_l1.append(result["map_l1"])
+
+        if stage == 1 and epoch_map_l1:
+            mean_map_l1 = sum(epoch_map_l1) / len(epoch_map_l1)
+            wandb.log({"map_l1_mean": mean_map_l1}, commit=False)
+            if mean_map_l1 < best_map_l1:
+                best_map_l1 = mean_map_l1
+                torch.save(ema_model.averaged_model.state_dict(), os.path.join(project_folder, "best.pth"))
+                print(f"New best map_l1 {mean_map_l1:.4f} at epoch {epoch}, saved best.pth")
+
+        wandb.log(
+            {f"lr_group{k}": g["lr"] for k, g in enumerate(optimizer.param_groups)},
+            commit=False,
+        )
+
+    wandb.log({})
+    print()

@@ -106,9 +106,12 @@ class TraversabilityTokenizer(nn.Module):
 
 
 
-def distil_loss(pred, target):
-    target = target.to(device=pred.device, dtype=pred.dtype)
-    return torch.mean(torch.abs(pred - target))
+def distil_loss(pred, target, mode):
+    if mode == "dino":
+        target = target.to(device=pred.device, dtype=pred.dtype)
+        return torch.mean(torch.abs(pred - target))
+    else: 
+        raise ValueError
 
 
 def get_teacher_map(mode, teacher_batch, actions=None):

@@ -1,5 +1,6 @@
 import os
 import wandb
+import tensorboard
 import argparse
 import numpy as np
 import yaml
@@ -25,6 +26,7 @@ from vint_train.models.vint.vint import ViNT
 from vint_train.models.vint.vit import ViT
 from vint_train.models.nomad.nomad import NoMaD, DenseNetwork
 from vint_train.models.nomad.nomad_vint import NoMaD_ViNT, replace_bn_with_gn
+from vint_train.models.travnav.travnav_vint import TravNav_ViNT
 from diffusion_policy.diffusion_policy.model.diffusion.conditional_unet1d import ConditionalUnet1D
 
 
@@ -32,11 +34,54 @@ from vint_train.data.vint_dataset import ViNT_Dataset
 from vint_train.training.train_eval_loop import (
     train_eval_loop,
     train_eval_loop_nomad,
+    train_eval_loop_travnav,
     load_model,
 )
 
 
+TRAV_NEW_PREFIXES = (
+    "vision_encoder.decoder.",
+    "vision_encoder.tokenizer.",
+    "vision_encoder.type_embed",
+)
+
+class LocalLogger:
+    def __init__(self, folder):
+        from torch.utils.tensorboard import SummaryWriter
+        self.writer = SummaryWriter(folder)
+        self.counts = {}
+
+    def log(self, data, step=None, commit=None):
+        for k, v in data.items():
+            try:
+                value = float(v)
+            except (TypeError, ValueError):
+                continue
+            n = self.counts.get(k, 0)
+            self.writer.add_scalar(k, value, n)
+            self.counts[k] = n + 1
+
+def load_pretrained_nomad(model, path):
+    state = torch.load(path, map_location="cpu")
+    own = model.state_dict()
+    mismatched = [k for k, v in state.items() if k in own and own[k].shape != v.shape]
+    state = {k: v for k, v in state.items() if k not in mismatched}
+    result = model.load_state_dict(state, strict=False)
+    print("pretrained load, skipped (shape mismatch):", mismatched)
+    print("pretrained load, missing keys:", result.missing_keys)
+    print("pretrained load, unexpected keys:", result.unexpected_keys)
+    bad_mismatch = [k for k in mismatched if "positional_encoding" not in k]
+    bad_missing = [
+        k for k in result.missing_keys
+        if not k.startswith(TRAV_NEW_PREFIXES) and "positional_encoding" not in k
+    ]
+    assert not bad_mismatch, f"unexpected shape mismatches: {bad_mismatch}"
+    assert not bad_missing, f"missing keys outside the new modules: {bad_missing}"
+    assert not result.unexpected_keys, f"unexpected keys: {result.unexpected_keys}"
+
+
 def main(config):
+    is_travnav = config.get("vision_encoder") == "travnav_vint"
     assert config["distance"]["min_dist_cat"] < config["distance"]["max_dist_cat"]
     assert config["action"]["min_dist_cat"] < config["action"]["max_dist_cat"]
 
@@ -112,7 +157,7 @@ def main(config):
                         normalize=config["normalize"],
                         goal_type=config["goal_type"],
                         teacher_dir=config.get("teacher_dir", None),
-                        teacher_mode=config.get("teacher", "dino"),
+                        teacher_mode=config.get("teacher_mode", "dino"),
                     )
                     if data_split_type == "train":
                         train_dataset.append(dataset)
@@ -142,9 +187,18 @@ def main(config):
             dataset,
             batch_size=config["eval_batch_size"],
             shuffle=True,
-            num_workers=0,
+            num_workers=8,
+            persistent_workers=True,
             drop_last=False,
         )
+
+    if config.get("overfit_one_batch", False):
+        overfit_batch = next(iter(train_loader))
+        train_loader = [overfit_batch] * int(config.get("overfit_steps", 300))
+        config["epochs"] = 1
+        config["warmup"] = False
+        config["trav_dropout"] = 0.0
+        config["trav_log_every"] = 100
 
     # Create the model
     if config["model_type"] == "gnm":
@@ -175,6 +229,19 @@ def main(config):
                 mha_num_attention_heads=config["mha_num_attention_heads"],
                 mha_num_attention_layers=config["mha_num_attention_layers"],
                 mha_ff_dim_factor=config["mha_ff_dim_factor"],
+            )
+            vision_encoder = replace_bn_with_gn(vision_encoder)
+        elif config["vision_encoder"] == "travnav_vint":
+            vision_encoder = TravNav_ViNT(
+                obs_encoding_size=config["encoding_size"],
+                context_size=config["context_size"],
+                mha_num_attention_heads=config["mha_num_attention_heads"],
+                mha_num_attention_layers=config["mha_num_attention_layers"],
+                mha_ff_dim_factor=config["mha_ff_dim_factor"],
+                num_trav_tokens=config["num_trav_tokens"],
+                trav_dropout=config["trav_dropout"],
+                use_trav=config["use_trav"],
+                decoder_in_channels=config["decoder_in_channels"],
             )
             vision_encoder = replace_bn_with_gn(vision_encoder)
         elif config["vision_encoder"] == "vib": 
@@ -222,6 +289,9 @@ def main(config):
     else:
         raise ValueError(f"Model {config['model']} not supported")
 
+    if is_travnav and config.get("pretrained_checkpoint") and "load_run" not in config:
+        load_pretrained_nomad(model, config["pretrained_checkpoint"])
+
     if config["clipping"]:
         print("Clipping gradients to", config["max_norm"])
         for p in model.parameters():
@@ -235,12 +305,31 @@ def main(config):
 
     lr = float(config["lr"])
     config["optimizer"] = config["optimizer"].lower()
+    if is_travnav:
+        new_params = [p for n, p in model.named_parameters() if n.startswith(TRAV_NEW_PREFIXES)]
+        old_params = [p for n, p in model.named_parameters() if not n.startswith(TRAV_NEW_PREFIXES)]
+        if int(config["stage"]) == 1:
+            assert new_params, "stage 1 needs the new travnav modules (use_trav: true)"
+            for p in old_params:
+                p.requires_grad_(False)
+            param_groups = [{"params": new_params, "lr": lr}]
+        else:
+            param_groups = [{"params": old_params, "lr": float(config["lr_pretrained"])}]
+            if new_params:
+                param_groups.insert(0, {"params": new_params, "lr": float(config["lr_new"])})
+        print(
+            "travnav stage", config["stage"],
+            "| new params:", sum(p.numel() for p in new_params),
+            "| pretrained params:", sum(p.numel() for p in old_params),
+        )
+    else:
+        param_groups = model.parameters()
     if config["optimizer"] == "adam":
-        optimizer = Adam(model.parameters(), lr=lr, betas=(0.9, 0.98))
+        optimizer = Adam(param_groups, lr=lr, betas=(0.9, 0.98))
     elif config["optimizer"] == "adamw":
-        optimizer = AdamW(model.parameters(), lr=lr)
+        optimizer = AdamW(param_groups, lr=lr)
     elif config["optimizer"] == "sgd":
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+        optimizer = torch.optim.SGD(param_groups, lr=lr, momentum=0.9)
     else:
         raise ValueError(f"Optimizer {config['optimizer']} not supported")
 
@@ -287,7 +376,10 @@ def main(config):
         print("Loading model from ", load_project_folder)
         latest_path = os.path.join(load_project_folder, "latest.pth")
         latest_checkpoint = torch.load(latest_path) #f"cuda:{}" if torch.cuda.is_available() else "cpu")
-        load_model(model, config["model_type"], latest_checkpoint)
+        if is_travnav:
+            model.load_state_dict(latest_checkpoint, strict=True)
+        else:
+            load_model(model, config["model_type"], latest_checkpoint)
         if "epoch" in latest_checkpoint:
             current_epoch = latest_checkpoint["epoch"] + 1
 
@@ -323,6 +415,34 @@ def main(config):
             alpha=config["alpha"],
             use_wandb=config["use_wandb"],
             eval_fraction=config["eval_fraction"],
+        )
+    elif config["vision_encoder"] == "travnav_vint":
+        train_eval_loop_travnav(
+            train_model=config["train"],
+            model=model,
+            optimizer=optimizer,
+            lr_scheduler=scheduler,
+            noise_scheduler=noise_scheduler,
+            train_loader=train_loader,
+            test_dataloaders=test_dataloaders,
+            transform=transform,
+            goal_mask_prob=config["goal_mask_prob"],
+            epochs=config["epochs"],
+            device=device,
+            project_folder=config["project_folder"],
+            print_log_freq=config["print_log_freq"],
+            wandb_log_freq=config["wandb_log_freq"],
+            image_log_freq=config["image_log_freq"],
+            num_images_log=config["num_images_log"],
+            current_epoch=current_epoch,
+            alpha=float(config["alpha"]),
+            use_wandb=config["use_wandb"],
+            eval_fraction=config["eval_fraction"],
+            eval_freq=config["eval_freq"],
+            stage=int(config["stage"]),
+            lambda_t=float(config["lambda_t"]),
+            teacher_mode=config["teacher_mode"],
+            trav_log_every=int(config["trav_log_every"]),
         )
     else:
         train_eval_loop_nomad(
@@ -387,18 +507,7 @@ if __name__ == "__main__":
         ],  # should error if dir already exists to avoid overwriting and old project
     )
 
-    if config["use_wandb"]:
-        wandb.login()
-        wandb.init(
-            project=config["project_name"],
-            settings=wandb.Settings(start_method="fork"),
-            entity="gnmv2", # TODO: change this to your wandb entity
-        )
-        wandb.save(args.config, policy="now")  # save the config file
-        wandb.run.name = config["run_name"]
-        # update the wandb args with the training configurations
-        if wandb.run:
-            wandb.config.update(config)
+    wandb.log = LocalLogger(config["project_folder"]).log
 
     print(config)
     main(config)
