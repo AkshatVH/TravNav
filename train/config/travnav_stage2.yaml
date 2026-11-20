@@ -1,6 +1,6 @@
 project_name: travnav
 run_name: travnav_stage2
-load_run: visualnav-transformer/train/logs/travnav/travnav_stage1_2026_11_18_16_10_57
+load_run: logs/travnav/travnav_stage1_2026_11_18_16_10_57
 
 use_wandb: True
 train: True
